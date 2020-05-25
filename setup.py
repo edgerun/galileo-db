@@ -2,18 +2,27 @@ import os
 
 import setuptools
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+try:
+    with open("README.md", "r") as fh:
+        long_description = fh.read()
+except FileNotFoundError:
+    long_description = ''
 
-with open("requirements-dev.txt", "r") as fh:
-    tests_require = [line for line in fh.read().split(os.linesep) if line]
+try:
+    with open("requirements-dev.txt", "r") as fh:
+        tests_require = [line for line in fh.read().split(os.linesep) if line]
+except FileNotFoundError:
+    tests_require = []
 
-with open("requirements.txt", "r") as fh:
-    install_requires = [line for line in fh.read().split(os.linesep) if line and not line.startswith('git')]
+try:
+    with open("requirements.txt", "r") as fh:
+        install_requires = [line for line in fh.read().split(os.linesep) if line and not line.startswith('git')]
+except FileNotFoundError:
+    install_requires = []
 
 setuptools.setup(
     name="mc2-galileo-db",
-    version="0.1.0.dev1",
+    version="0.1.0.dev2",
     author="Thomas Rausch",
     author_email="t.rausch@dsg.tuwien.ac.at",
     description="Galileo DB: Gateway and client tools for the Galileo Experiment DB",
