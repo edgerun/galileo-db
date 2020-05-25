@@ -35,6 +35,9 @@ dist: venv
 install: venv
 	$(VENV_ACTIVATE); python setup.py install
 
+deploy: venv test dist
+	$(VENV_ACTIVATE); pip install --upgrade twine; twine upload dist/*
+
 clean-dist: clean
 	rm -rf dist/
 	rm -rf *.egg-info/
