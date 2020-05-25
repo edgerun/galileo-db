@@ -30,6 +30,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://git.dsg.tuwien.ac.at/mc2/galileo-db",
     packages=setuptools.find_packages(),
+    package_data={'galileodb.sql': ['schema.sql']},
     test_suite="tests",
     tests_require=tests_require,
     install_requires=install_requires,
