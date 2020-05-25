@@ -43,7 +43,7 @@ def create_mysql_from_env(env: MutableMapping = os.environ):
 
 def create_sqlite_from_env(env: MutableMapping = os.environ):
     from galileodb.sql.driver.sqlite import SqliteAdapter
-    db_file = env.get('galileo_expdb_sqlite_path', '/tmp/galileo.sqlite')
+    db_file = env.get('galileo_expdb_sqlite_path', './galileodb.sqlite')
 
-    logger.info('creating db adapter to SQLite %s', db_file)
+    logger.info('creating db adapter to SQLite %s', os.path.realpath(db_file))
     return SqliteAdapter(db_file)
