@@ -6,7 +6,7 @@ import time
 
 import redis
 
-from galileodb.sql.factory import create_experiment_database_from_env
+from galileodb.factory import create_experiment_database_from_env
 from galileodb.model import Experiment, generate_experiment_id
 from galileodb.telemetry import ExperimentTelemetryRecorder
 

@@ -3,7 +3,6 @@ import os
 from typing import MutableMapping
 
 from galileodb.db import ExperimentDatabase
-from galileodb.sql.adapter import ExperimentSQLDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +13,8 @@ def create_experiment_database_from_env(env: MutableMapping = os.environ) -> Exp
 
 
 def create_experiment_database(driver: str, env: MutableMapping = os.environ) -> ExperimentDatabase:
+    from galileodb.sql.adapter import ExperimentSQLDatabase
+
     if driver == 'sqlite':
         db_adapter = create_sqlite_from_env(env)
 
