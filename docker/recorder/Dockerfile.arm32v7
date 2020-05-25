@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:experimental
+FROM arm32v7/python:3.7-alpine as base
+
+#############
+### build ###
+#############
+from base as builder
+COPY --from=multiarch/qemu-user-static:x86_64-arm /usr/bin/qemu-* /usr/bin
+
+# copy source
+RUN mkdir src
+COPY . /src
+WORKDIR /src
+
+# install
+RUN python setup.py install
+
+############
+### prod ###
+############
+FROM base
+COPY --from=builder /usr/local /usr/local
+
+CMD ["/usr/local/bin/galileo-telemetry-recorder"]

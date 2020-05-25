@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:experimental
+FROM python:3.7-alpine as base
+
+#############
+### build ###
+#############
+from base as builder
+
+# copy source
+RUN mkdir src
+COPY . /src
+WORKDIR /src
+
+# install
+RUN python setup.py install
+
+############
+### prod ###
+############
+FROM base
+COPY --from=builder /usr/local /usr/local
+
+CMD ["/usr/local/bin/galileo-telemetry-recorder"]
