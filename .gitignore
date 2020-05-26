@@ -2,6 +2,9 @@
 *.iml
 *~
 
+# default galileodb fil
+galileodb.sqlite
+
 # redis dump file
 dump.rdb
 
