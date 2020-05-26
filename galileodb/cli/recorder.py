@@ -31,13 +31,13 @@ def create_experiment(args):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
-    signal.signal(signal.SIGTERM, handle_sigterm)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', required=False, help='set name of experiment', default='')
     parser.add_argument('--creator', required=False, help='set name of creator', default='')
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging._nameToLevel[os.getenv('galileo_log_level', 'INFO')])
+    signal.signal(signal.SIGTERM, handle_sigterm)
 
     # connect to redis eventbus
     rds = redis.Redis(
