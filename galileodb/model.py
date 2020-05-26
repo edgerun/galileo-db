@@ -51,6 +51,12 @@ class NodeInfo(NamedTuple):
 
 
 class Event(NamedTuple):
+    timestamp: float
+    name: str
+    value: str = None
+
+
+class ExperimentEvent(NamedTuple):
     exp_id: str
     timestamp: float
     name: str

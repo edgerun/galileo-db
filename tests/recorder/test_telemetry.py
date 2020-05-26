@@ -4,23 +4,12 @@ import unittest
 
 from telemc import Telemetry
 
+from galileodb.reporter.telemetry import RedisTelemetryReporter
 from galileodb.sql.adapter import ExperimentSQLDatabase
 from galileodb.recorder.telemetry import ExperimentTelemetryRecorder
 from tests.testutils import RedisResource, SqliteResource
 
 logging.basicConfig(level=logging.DEBUG)
-
-
-class RedisTelemetryReporter:
-
-    def __init__(self, rds) -> None:
-        self.rds = rds
-
-    def report(self, telemetry: Telemetry):
-        channel = f'telem/{telemetry.node}/{telemetry.metric}'
-        msg = f'{telemetry.timestamp} {telemetry.value}'
-
-        self.rds.publish(channel, msg)
 
 
 class TestExperimentTelemetryRecorder(unittest.TestCase):

@@ -5,7 +5,7 @@ import threading
 from typing import Tuple, List, Dict
 
 from galileodb.db import ExperimentDatabase
-from galileodb.model import Experiment, Telemetry, ServiceRequestTrace, NodeInfo, Event
+from galileodb.model import Experiment, Telemetry, ServiceRequestTrace, NodeInfo, ExperimentEvent
 
 logger = logging.getLogger(__name__)
 
@@ -218,8 +218,8 @@ class ExperimentSQLDatabase(ExperimentDatabase):
     def save_telemetry(self, telemetry: List[Telemetry]):
         self.db.insert_many('telemetry', Telemetry._fields, telemetry)
 
-    def save_events(self, events: List[Event]):
-        self.db.insert_many('events', Event._fields, events)
+    def save_events(self, events: List[ExperimentEvent]):
+        self.db.insert_many('events', ExperimentEvent._fields, events)
 
     def save_nodeinfos(self, infos: List[NodeInfo]):
         keys = ['exp_id', 'node', 'info_key', 'info_value']

@@ -1,6 +1,6 @@
 import abc
 
-from galileodb.model import Experiment, Telemetry, Event
+from galileodb.model import Experiment, Telemetry, ExperimentEvent
 from galileodb.sql.adapter import ExperimentSQLDatabase, SqlAdapter
 
 
@@ -97,9 +97,9 @@ class AbstractTestSqlDatabase(abc.ABC):
 
     def test_save_events(self):
         events = [
-            Event('exp1', 1, 'begin'),
-            Event('exp1', 2, 'start', 'function1'),
-            Event('exp1', 3, 'stop', 'function1'),
+            ExperimentEvent('exp1', 1, 'begin'),
+            ExperimentEvent('exp1', 2, 'start', 'function1'),
+            ExperimentEvent('exp1', 3, 'stop', 'function1'),
         ]
 
         self.db.save_events(events)
