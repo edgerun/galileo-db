@@ -8,7 +8,7 @@ import redis
 
 from galileodb.factory import create_experiment_database_from_env
 from galileodb.model import Experiment, generate_experiment_id
-from galileodb.telemetry import ExperimentTelemetryRecorder
+from galileodb.recorder.telemetry import ExperimentTelemetryRecorder
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ import unittest
 from telemc import Telemetry
 
 from galileodb.sql.adapter import ExperimentSQLDatabase
-from galileodb.telemetry import ExperimentTelemetryRecorder
+from galileodb.recorder.telemetry import ExperimentTelemetryRecorder
 from tests.testutils import RedisResource, SqliteResource
 
 logging.basicConfig(level=logging.DEBUG)
