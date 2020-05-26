@@ -40,7 +40,7 @@ setuptools.setup(
     ],
     entry_points={
         "console_scripts": [
-            'galileo-telemetry-recorder = galileodb.cli.telemetry:main'
+            'galileo-experiment-recorder = galileodb.cli.recorder:main'
         ]
     },
 )
