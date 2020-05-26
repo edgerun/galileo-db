@@ -2,7 +2,7 @@ import time
 from abc import ABC
 from typing import List, Tuple
 
-from galileodb.model import Experiment, Telemetry, NodeInfo
+from galileodb.model import Experiment, Telemetry, NodeInfo, Event
 
 
 class ExperimentDatabase(ABC):
@@ -37,6 +37,9 @@ class ExperimentDatabase(ABC):
         raise NotImplementedError
 
     def save_telemetry(self, telemetry: List[Telemetry]):
+        raise NotImplementedError
+
+    def save_events(self, events: List[Event]):
         raise NotImplementedError
 
     def save_nodeinfos(self, infos: List[NodeInfo]):

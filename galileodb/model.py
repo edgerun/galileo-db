@@ -50,6 +50,13 @@ class NodeInfo(NamedTuple):
     exp_id: str
 
 
+class Event(NamedTuple):
+    exp_id: str
+    timestamp: float
+    name: str
+    value: str = None
+
+
 class WorkloadConfiguration(NamedTuple):
     service: str
     ticks: List[int]

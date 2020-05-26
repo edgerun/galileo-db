@@ -1,7 +1,7 @@
 import abc
 
+from galileodb.model import Experiment, Telemetry, Event
 from galileodb.sql.adapter import ExperimentSQLDatabase, SqlAdapter
-from galileodb.model import Experiment, Telemetry
 
 
 class AbstractTestSqlDatabase(abc.ABC):
@@ -94,6 +94,22 @@ class AbstractTestSqlDatabase(abc.ABC):
 
         rows = self.db.db.fetchall('SELECT * FROM telemetry')
         self.assertEqual(3, len(rows))
+
+    def test_save_events(self):
+        events = [
+            Event('exp1', 1, 'begin'),
+            Event('exp1', 2, 'start', 'function1'),
+            Event('exp1', 3, 'stop', 'function1'),
+        ]
+
+        self.db.save_events(events)
+
+        rows = self.db.db.fetchall('SELECT * FROM events')
+        self.assertEqual(3, len(rows))
+
+        self.assertEqual(('exp1', 1.0, 'begin', None), rows[0])
+        self.assertEqual(('exp1', 2.0, 'start', 'function1'), rows[1])
+        self.assertEqual(('exp1', 3.0, 'stop', 'function1'), rows[2])
 
     def test_delete_experiment(self):
         exp_id = 'expid10'
