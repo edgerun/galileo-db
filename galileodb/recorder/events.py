@@ -33,7 +33,7 @@ class RedisEventSubscriber:
                 payload = data.split(' ', maxsplit=2)
 
                 if len(payload) == 2 or len(payload) == 3:
-                    yield Event(payload)
+                    yield Event(*payload)
                 else:
                     logger.warning('Unknown event payload format %s', payload)
 
