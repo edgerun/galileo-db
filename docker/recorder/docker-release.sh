@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-image=git.dsg.tuwien.ac.at:5005/mc2/galileo-db/recorder
-# registry/group/repository/image
+image=edgerun/galileodb-recorder
 builddir="docker/recorder"
 
 # change into project root
