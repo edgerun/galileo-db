@@ -21,4 +21,4 @@ RUN python setup.py install
 FROM base
 COPY --from=builder /usr/local /usr/local
 
-CMD ["/usr/local/bin/galileo-experiment-recorder"]
+ENTRYPOINT ["/usr/local/bin/galileo-experiment-recorder"]
