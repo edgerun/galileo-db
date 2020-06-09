@@ -148,7 +148,6 @@ class SqlAdapter(abc.ABC):
 
 
 class ExperimentSQLDatabase(ExperimentDatabase):
-
     SCHEMA_FILE = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
     def __init__(self, db: SqlAdapter) -> None:
@@ -217,6 +216,9 @@ class ExperimentSQLDatabase(ExperimentDatabase):
 
     def save_telemetry(self, telemetry: List[Telemetry]):
         self.db.insert_many('telemetry', Telemetry._fields, telemetry)
+
+    def save_event(self, event: ExperimentEvent):
+        self.db.insert_one('events', event._asdict())
 
     def save_events(self, events: List[ExperimentEvent]):
         self.db.insert_many('events', ExperimentEvent._fields, events)

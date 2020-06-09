@@ -46,6 +46,30 @@ class RedisEventSubscriber:
 
 
 class ExperimentEventRecorder:
+    def __init__(self, rds, db: ExperimentDatabase, exp_id: str) -> None:
+        self.rds = rds
+        self.db = db
+        self.exp_id = exp_id
+        self._subscriber = None
+
+    def run(self):
+        self._subscriber = RedisEventSubscriber(self.rds)
+
+        for event in self._subscriber.listen():
+            try:
+                self._record(event)
+            except:
+                logger.exception("error saving ExperimentEvent")
+
+    def close(self):
+        if self._subscriber:
+            self._subscriber.close()
+
+    def _record(self, event: Event):
+        self.db.save_event(ExperimentEvent(self.exp_id, *event))
+
+
+class BatchingExperimentEventRecorder:
     def __init__(self, rds, db: ExperimentDatabase, exp_id: str, flush_every=36) -> None:
         self.rds = rds
         self.db = db
@@ -89,7 +113,7 @@ class ExperimentEventRecorder:
 
 
 class ExperimentEventRecorderThread(threading.Thread):
-    def __init__(self, recorder: ExperimentEventRecorder, *args, **kwargs) -> None:
+    def __init__(self, recorder, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.recorder = recorder
 

@@ -39,6 +39,9 @@ class ExperimentDatabase(ABC):
     def save_telemetry(self, telemetry: List[Telemetry]):
         raise NotImplementedError
 
+    def save_event(self, event: ExperimentEvent):
+        raise NotImplementedError
+
     def save_events(self, events: List[ExperimentEvent]):
         raise NotImplementedError
 
