@@ -21,14 +21,14 @@ except FileNotFoundError:
     install_requires = []
 
 setuptools.setup(
-    name="mc2-galileo-db",
+    name="galileo-db",
     version="0.3.0.dev1",
     author="Thomas Rausch",
     author_email="t.rausch@dsg.tuwien.ac.at",
     description="Galileo DB: Gateway and client tools for the Galileo Experiment DB",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://git.dsg.tuwien.ac.at/mc2/galileo-db",
+    url="https://github.com/edgerun/galileo-db",
     packages=setuptools.find_packages(),
     package_data={'galileodb.sql': ['schema.sql']},
     test_suite="tests",
