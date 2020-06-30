@@ -30,6 +30,15 @@ def create_experiment(args):
     return Experiment(experiment_id, name=name, creator=creator, start=now, created=now, status='RUNNING')
 
 
+def create_redis():
+    host = os.getenv('galileo_redis_host', 'localhost')
+    port = int(os.getenv('galileo_redis_port', 6379))
+
+    logger.info('connecting to redis event bus on %s:%d', host, port)
+
+    return redis.Redis(host=host, port=port, decode_responses=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', required=False, help='set name of experiment', default='')
@@ -40,11 +49,7 @@ def main():
     signal.signal(signal.SIGTERM, handle_sigterm)
 
     # connect to redis eventbus
-    rds = redis.Redis(
-        host=os.getenv('galileo_redis_host', 'localhost'),
-        port=int(os.getenv('galileo_redis_port', 6379)),
-        decode_responses=True
-    )
+    rds = create_redis()
 
     # connect to experiment database
     exp_db = create_experiment_database_from_env()
