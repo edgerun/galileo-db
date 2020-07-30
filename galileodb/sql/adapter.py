@@ -186,8 +186,8 @@ class ExperimentSQLDatabase(ExperimentDatabase):
         stmts = [
             "DELETE FROM `telemetry` WHERE EXP_ID = " + self.db.placeholder,
             "DELETE FROM `traces` WHERE EXP_ID = " + self.db.placeholder,
-            "DELETE FROM `experiments` WHERE EXP_ID = " + self.db.placeholder,
             "DELETE FROM `events` WHERE EXP_ID = " + self.db.placeholder,
+            "DELETE FROM `experiments` WHERE EXP_ID = " + self.db.placeholder,
         ]
 
         for sql in stmts:
