@@ -56,3 +56,6 @@ class ExperimentDatabase(ABC):
         exp.end = time.time()
         self.update_experiment(exp)
         self.touch_traces(exp)
+
+    def get_running_experiment(self) -> Experiment:
+        raise NotImplementedError

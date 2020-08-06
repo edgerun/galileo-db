@@ -2,7 +2,7 @@ import abc
 import logging
 import os
 import threading
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Optional
 
 from galileodb.db import ExperimentDatabase
 from galileodb.model import Experiment, Telemetry, ServiceRequestTrace, NodeInfo, ExperimentEvent
@@ -240,3 +240,14 @@ class ExperimentSQLDatabase(ExperimentDatabase):
         entries = self.db.fetchall(sql)
 
         return list(map(lambda x: Experiment(*(tuple(x))), entries))
+
+    def get_running_experiment(self) -> Optional[Experiment]:
+        sql = "SELECT * FROM `experiments` WHERE `STATUS` = 'RUNNING'"
+
+        entry = self.db.fetchone(sql)
+
+        if entry:
+            row = tuple(entry)
+            return Experiment(*row)
+        else:
+            return None
