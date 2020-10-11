@@ -9,8 +9,8 @@ from typing import List, Iterable
 import redis
 
 from galileodb.db import ExperimentDatabase
-from galileodb.sql.adapter import ExperimentSQLDatabase
 from galileodb.model import ServiceRequestTrace
+from galileodb.sql.adapter import ExperimentSQLDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,12 @@ class TraceRedisLogger(TraceLogger):
 
         for trace in buffer:
             score = trace.created
-            value = '%s,%s,%s,%.7f,%.7f,%.7f' % trace  # FIXME
+            # FIXME
+            if len(trace) == 6:
+                value = '%s,%s,%s,%.7f,%.7f,%.7f' % trace
+            elif len(trace) == 7:
+                value = '%s,%s,%s,%.7f,%.7f,%.7f,%s' % trace
+
             rds.zadd(self.key, {value: score})
 
         rds.execute()

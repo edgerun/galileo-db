@@ -215,14 +215,45 @@ class ExperimentSQLDatabase(ExperimentDatabase):
         sql = sql.replace('?', self.db.placeholder)
         self.db.execute(sql, (experiment.id, experiment.start, experiment.end))
 
+    def get_traces(self, exp_id=None) -> List[ServiceRequestTrace]:
+        if exp_id is None:
+            sql = 'SELECT client, service, host, created, sent, done, exp_id FROM `traces`'
+            entries = self.db.fetchall(sql)
+        else:
+            sql = "SELECT client, service, host, created, sent, done, exp_id FROM `traces` WHERE EXP_ID = " \
+                  + self.db.placeholder
+            entries = self.db.fetchall(sql, (exp_id,))
+
+        return list(map(lambda x: ServiceRequestTrace(*(tuple(x))), entries))
+
     def save_telemetry(self, telemetry: List[Telemetry]):
         self.db.insert_many('telemetry', Telemetry._fields, telemetry)
+
+    def get_telemetry(self, exp_id=None) -> List[Telemetry]:
+        if exp_id is None:
+            sql = 'SELECT `timestamp`, `metric`, `node`, `value`, `exp_id` FROM `telemetry`'
+            entries = self.db.fetchall(sql)
+        else:
+            sql = "SELECT `timestamp`, `metric`, `node`, `value`, `exp_id` FROM `telemetry` WHERE EXP_ID = " + self.db.placeholder
+            entries = self.db.fetchall(sql, (exp_id,))
+
+        return list(map(lambda x: Telemetry(*(tuple(x))), entries))
 
     def save_event(self, event: ExperimentEvent):
         self.db.insert_one('events', event._asdict())
 
     def save_events(self, events: List[ExperimentEvent]):
         self.db.insert_many('events', ExperimentEvent._fields, events)
+
+    def get_events(self, exp_id=None) -> List[ExperimentEvent]:
+        if exp_id is None:
+            sql = 'SELECT * FROM `events`'
+            entries = self.db.fetchall(sql)
+        else:
+            sql = "SELECT * FROM `events` WHERE EXP_ID = " + self.db.placeholder
+            entries = self.db.fetchall(sql, (exp_id,))
+
+        return list(map(lambda x: ExperimentEvent(*(tuple(x))), entries))
 
     def save_nodeinfos(self, infos: List[NodeInfo]):
         keys = ['exp_id', 'node', 'info_key', 'info_value']

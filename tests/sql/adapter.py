@@ -1,10 +1,9 @@
-import abc
-
-from galileodb.model import Experiment, Telemetry, ExperimentEvent
+from galileodb.model import Experiment, Telemetry
 from galileodb.sql.adapter import ExperimentSQLDatabase, SqlAdapter
+from tests.test_db import AbstractTestExperimentDatabase
 
 
-class AbstractTestSqlDatabase(abc.ABC):
+class AbstractTestSqlDatabase(AbstractTestExperimentDatabase):
     sql: SqlAdapter
     db: ExperimentSQLDatabase
 
@@ -18,25 +17,6 @@ class AbstractTestSqlDatabase(abc.ABC):
 
     def _create_sql_adapter(self) -> SqlAdapter:
         raise NotImplementedError
-
-    def test_get_experiment_on_invalid_id(self):
-        result = self.db.get_experiment('NOTEXISTS')
-        self.assertIsNone(result)
-
-    def test_save_and_get_experiment(self):
-        expected = Experiment('expid1', 'test_experiment', 'unittest', 10, 100, 1, 'running')
-
-        self.db.save_experiment(expected)
-
-        actual = self.db.get_experiment('expid1')
-
-        self.assertEqual('expid1', actual.id)
-        self.assertEqual('test_experiment', actual.name)
-        self.assertEqual('unittest', actual.creator)
-        self.assertEqual(10., actual.start)
-        self.assertEqual(100., actual.end)
-        self.assertEqual(1., actual.created)
-        self.assertEqual('running', actual.status)
 
     def test_insert_many_and_count(self):
         entries = [
@@ -68,22 +48,7 @@ class AbstractTestSqlDatabase(abc.ABC):
         self.assertEqual(10., exp2.created)
         self.assertEqual('finished', exp2.status)
 
-    def test_update_experiment_and_get(self):
-        exp = Experiment('expid8', 'test_experiment', 'unittest', 10, None, 1, 'running')
-        self.db.save_experiment(exp)
-
-        self.assertEqual(self.db.get_experiment('expid8').status, 'running')
-        self.assertEqual(self.db.get_experiment('expid8').end, None)
-
-        exp.status = 'finished'
-        exp.end = 100
-
-        self.db.update_experiment(exp)
-
-        self.assertEqual(self.db.get_experiment('expid8').status, 'finished')
-        self.assertEqual(self.db.get_experiment('expid8').end, 100)
-
-    def test_save_telemetry(self):
+    def test_save_telemetry_writes_to_table(self):
         telemetry = [
             Telemetry(1, 'cpu', 'n1', 32, 'expid1'),
             Telemetry(2, 'cpu', 'n1', 33, 'expid1'),
@@ -95,23 +60,7 @@ class AbstractTestSqlDatabase(abc.ABC):
         rows = self.db.db.fetchall('SELECT * FROM telemetry')
         self.assertEqual(3, len(rows))
 
-    def test_save_events(self):
-        events = [
-            ExperimentEvent('exp1', 1, 'begin'),
-            ExperimentEvent('exp1', 2, 'start', 'function1'),
-            ExperimentEvent('exp1', 3, 'stop', 'function1'),
-        ]
-
-        self.db.save_events(events)
-
-        rows = self.db.db.fetchall('SELECT * FROM events')
-        self.assertEqual(3, len(rows))
-
-        self.assertEqual(('exp1', 1.0, 'begin', None), rows[0])
-        self.assertEqual(('exp1', 2.0, 'start', 'function1'), rows[1])
-        self.assertEqual(('exp1', 3.0, 'stop', 'function1'), rows[2])
-
-    def test_delete_experiment(self):
+    def test_delete_experiment_removes_telemetry(self):
         exp_id = 'expid10'
         exp_id_control = 'expid11'
         self.db.save_experiment(Experiment(exp_id, 'test_experiment', 'unittest', 10, 100, 1, 'finished'))

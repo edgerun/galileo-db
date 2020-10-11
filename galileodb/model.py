@@ -90,6 +90,7 @@ class ServiceRequestTrace(NamedTuple):
     created: float
     sent: float
     done: float
+    exp_id: str = None
 
     @property
     def rt_time(self):
