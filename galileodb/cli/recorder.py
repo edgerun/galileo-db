@@ -39,13 +39,7 @@ def create_redis():
     return redis.Redis(host=host, port=port, decode_responses=True)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--name', required=False, help='set name of experiment', default='')
-    parser.add_argument('--creator', required=False, help='set name of creator', default='')
-    args = parser.parse_args()
-
-    logging.basicConfig(level=logging._nameToLevel[os.getenv('galileo_log_level', 'INFO')])
+def run(args):
     signal.signal(signal.SIGTERM, handle_sigterm)
 
     # connect to redis eventbus
@@ -62,7 +56,7 @@ def main():
     # main control loop
     recorder = Recorder(rds, exp_db, exp.id)
     try:
-        logger.info('starting experiment recorder')
+        logger.info('starting experiment recorder for exp %s', exp.id)
         recorder.start()
         logger.debug('storing node info keys')
         recorder.telemetry_recorder.save_nodeinfos()
@@ -77,7 +71,18 @@ def main():
             recorder.stop()
         exp_db.close()
 
-    logger.info('recorder exiting')
+    logger.info('experiment %s exiting', exp.id)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--name', required=False, help='set name of experiment', default='')
+    parser.add_argument('--creator', required=False, help='set name of creator', default='')
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging._nameToLevel[os.getenv('galileo_log_level', 'INFO')])
+
+    run(args)
 
 
 def handle_sigterm(signal_number, _stack_frame):
