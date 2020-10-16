@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import NamedTuple, List, Dict, Optional
+from typing import NamedTuple, List, Dict
 
 
 def generate_experiment_id():
@@ -124,11 +124,6 @@ class ServiceRequestTrace(NamedTuple):
 class ServiceRequestTraceData(NamedTuple):
     request_id: str
     content: str
-
-
-class CompletedServiceRequest(NamedTuple):
-    trace: ServiceRequestTrace
-    data: Optional[ServiceRequestTraceData] = None
 
 
 class ServiceRequestEntity(NamedTuple):

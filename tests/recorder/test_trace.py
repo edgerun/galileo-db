@@ -25,7 +25,7 @@ class TraceRecorderTest(unittest.TestCase):
         recorder.start()
 
         self.redis.rds.publish('galileo/results/traces',
-                               'client,service,host,0.0000000,1.0000000,1.0000000,None,id1,200,')
+                               'client,service,host,0.0000000,1.0000000,1.0000000,None,id1,200,None')
         self.redis.rds.publish('galileo/results/traces',
                                'client,service,host,0.0000000,1.0000000,1.0000000,exp1,id2,200,data')
 

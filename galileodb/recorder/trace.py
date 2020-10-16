@@ -3,7 +3,7 @@ import threading
 from abc import ABC
 from typing import Iterator
 
-from galileodb.model import ServiceRequestEntity, CompletedServiceRequest, ServiceRequestTrace, ServiceRequestTraceData
+from galileodb.model import ServiceRequestEntity
 from galileodb.trace import TraceLogger
 
 logger = logging.getLogger(__name__)
@@ -61,11 +61,7 @@ class RedisTraceRecorder(TraceRecorder):
             self._flush()
 
     def _record(self, t: ServiceRequestEntity):
-        request = CompletedServiceRequest(
-            ServiceRequestTrace.from_entity(t),
-            ServiceRequestTraceData(t.request_id, t.content)
-        )
-        self.trace_logger.buffer.append(request)
+        self.trace_logger.buffer.append(t)
 
         self.i = (self.i + 1) % self.flush_every
         if self.i == 0:
@@ -99,7 +95,7 @@ class TracesSubscriber:
                 if exp_id == 'None' or len(exp_id) == 0:
                     exp_id = None
 
-                if content == '':
+                if content == 'None' or len(content) == 0:
                     content = None
 
                 yield ServiceRequestEntity(
