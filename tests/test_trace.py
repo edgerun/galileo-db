@@ -119,6 +119,8 @@ class TestRedisTraceLogger(AbstractTraceLoggerTestCase, unittest.TestCase):
 
     def setUp(self) -> None:
         self.redis_resource.setUp()
+        self.p = self.redis_resource.rds.pubsub(ignore_subscribe_messages=True)
+        self.p.subscribe(TraceRedisLogger.key)
         self.queue = multiprocessing.Queue()
         self.logger = TraceRedisLogger(self.queue, self.redis_resource.rds)
         self.logger.flush_interval = 2
@@ -134,12 +136,21 @@ class TestRedisTraceLogger(AbstractTraceLoggerTestCase, unittest.TestCase):
 
     @timeout_decorator.timeout(5)
     def assert_flush(self, n):
-        traces = self.redis_resource.rds.zrange(self.logger.key, 0, -1)
-        self.assertEqual(len(traces), n)
+        while n < 0:
+            msg = self.p.get_message(ignore_subscribe_messages=True, timeout=0.2)
+            self.assertIsNotNone(msg)
+            n -= 1
+        self.assertEqual(n, 0)
 
     @timeout_decorator.timeout(5)
     def count_traces(self) -> int:
-        return self.redis_resource.rds.zcard(self.logger.key)
+        i = 0
+        msg = ''
+        while msg is not None:
+            msg = self.p.get_message(ignore_subscribe_messages=True, timeout=0.2)
+            if msg is not None:
+                i += 1
+        return i
 
 
 class TestTraceDatabaseLogger(AbstractTraceLoggerTestCase, unittest.TestCase):

@@ -9,7 +9,7 @@ from typing import List, Iterable
 import redis
 
 from galileodb.db import ExperimentDatabase
-from galileodb.model import ServiceRequestTrace, ServiceRequestTraceData, CompletedServiceRequest
+from galileodb.model import ServiceRequestTrace, CompletedServiceRequest
 from galileodb.sql.adapter import ExperimentSQLDatabase
 
 logger = logging.getLogger(__name__)
@@ -106,14 +106,26 @@ class TraceLogger(Process):
 
 
 class TraceRedisLogger(TraceLogger):
-    key = 'galileo:results:traces'
+    key = 'galileo/results/traces'
 
     def __init__(self, trace_queue: Queue, rds: redis.Redis, start=True) -> None:
         super().__init__(trace_queue, start)
         self.rds = rds
 
     def _do_flush(self, buffer: Iterable[CompletedServiceRequest]):
-        raise NotImplementedError
+        rds = self.rds.pipeline()
+
+        for request in buffer:
+            trace = request.trace
+            data = request.data
+            value = '%s,%s,%s,%.7f,%.7f,%.7f,%s,%s,%d' % trace
+
+            if data is not None:
+                value = "%s,%s" % (value, data.content)
+            rds.publish(self.key, value)
+
+        rds.execute()
+
 
 class TraceDatabaseLogger(TraceLogger):
 
