@@ -9,7 +9,7 @@ from typing import List, Iterable
 import redis
 
 from galileodb.db import ExperimentDatabase
-from galileodb.model import ServiceRequestTrace
+from galileodb.model import ServiceRequestTrace, ServiceRequestTraceData, CompletedServiceRequest
 from galileodb.sql.adapter import ExperimentSQLDatabase
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ class TraceLogger(Process):
                 logger.debug('queue is empty, exitting')
                 return
 
-    def _do_flush(self, buffer: List[ServiceRequestTrace]):
+    def _do_flush(self, buffer: List[CompletedServiceRequest]):
         pass
 
 
@@ -112,21 +112,8 @@ class TraceRedisLogger(TraceLogger):
         super().__init__(trace_queue, start)
         self.rds = rds
 
-    def _do_flush(self, buffer: Iterable[ServiceRequestTrace]):
-        rds = self.rds.pipeline()
-
-        for trace in buffer:
-            score = trace.created
-            # FIXME
-            if len(trace) == 6:
-                value = '%s,%s,%s,%.7f,%.7f,%.7f' % trace
-            elif len(trace) == 7:
-                value = '%s,%s,%s,%.7f,%.7f,%.7f,%s' % trace
-
-            rds.zadd(self.key, {value: score})
-
-        rds.execute()
-
+    def _do_flush(self, buffer: Iterable[CompletedServiceRequest]):
+        raise NotImplementedError
 
 class TraceDatabaseLogger(TraceLogger):
 
@@ -142,8 +129,9 @@ class TraceDatabaseLogger(TraceLogger):
             self.experiment_db.db.reconnect()
         super().run()
 
-    def _do_flush(self, buffer: Iterable[ServiceRequestTrace]):
-        self.experiment_db.save_traces(list(buffer))
+    def _do_flush(self, buffer: Iterable[CompletedServiceRequest]):
+        self.experiment_db.save_traces(list([x.trace for x in buffer]))
+        self.experiment_db.save_trace_data(list([x.data for x in buffer if x.data is not None]))
 
 
 class TraceFileLogger(TraceLogger):
@@ -166,8 +154,9 @@ class TraceFileLogger(TraceLogger):
         with open(self.file_path, 'w') as fd:
             csv.writer(fd).writerow(ServiceRequestTrace._fields)
 
-    def _do_flush(self, buffer: Iterable[ServiceRequestTrace]):
+    def _do_flush(self, buffer: Iterable[CompletedServiceRequest]):
         with open(self.file_path, 'a') as fd:
             writer = csv.writer(fd)
             for row in buffer:
-                writer.writerow(row)
+                # TODO write content of data
+                writer.writerow(row.trace)

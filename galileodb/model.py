@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import NamedTuple, List, Dict
+from typing import NamedTuple, List, Dict, Optional
 
 
 def generate_experiment_id():
@@ -91,6 +91,43 @@ class ServiceRequestTrace(NamedTuple):
     sent: float
     done: float
     exp_id: str = None
+    request_id: str = None
+    status: int = None
+
+    @property
+    def rt_time(self):
+        return (self.done - self.created) * 1000
+
+    @property
+    def queue_time(self):
+        return (self.sent - self.created) * 1000
+
+    @property
+    def processing_time(self):
+        return (self.done - self.sent) * 1000
+
+
+class ServiceRequestTraceData(NamedTuple):
+    request_id: str
+    content: str
+
+
+class CompletedServiceRequest(NamedTuple):
+    trace: ServiceRequestTrace
+    data: Optional[ServiceRequestTraceData] = None
+
+
+class ServiceRequestEntity(NamedTuple):
+    client: str
+    service: str
+    host: str
+    created: float
+    sent: float
+    done: float
+    exp_id: str = None
+    request_id: str = None
+    status: int = None
+    content: str = None
 
     @property
     def rt_time(self):

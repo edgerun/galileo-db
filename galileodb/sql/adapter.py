@@ -5,7 +5,8 @@ import threading
 from typing import Tuple, List, Dict, Optional
 
 from galileodb.db import ExperimentDatabase
-from galileodb.model import Experiment, Telemetry, ServiceRequestTrace, NodeInfo, ExperimentEvent
+from galileodb.model import Experiment, Telemetry, ServiceRequestTrace, NodeInfo, ExperimentEvent, \
+    ServiceRequestTraceData, ServiceRequestEntity
 
 logger = logging.getLogger(__name__)
 
@@ -210,21 +211,25 @@ class ExperimentSQLDatabase(ExperimentDatabase):
     def save_traces(self, traces: List[ServiceRequestTrace]):
         self.db.insert_many('traces', ServiceRequestTrace._fields, traces)
 
+
+    def save_trace_data(self, trace_data: List[ServiceRequestTraceData]):
+        self.db.insert_many('trace_data', ServiceRequestTraceData._fields, trace_data)
+
     def touch_traces(self, experiment: Experiment):
         sql = 'UPDATE `traces` SET `EXP_ID` = ? WHERE CREATED >= ? AND CREATED <= ?'
         sql = sql.replace('?', self.db.placeholder)
         self.db.execute(sql, (experiment.id, experiment.start, experiment.end))
 
-    def get_traces(self, exp_id=None) -> List[ServiceRequestTrace]:
+    def get_traces(self, exp_id=None) -> List[ServiceRequestEntity]:
         if exp_id is None:
-            sql = 'SELECT client, service, host, created, sent, done, exp_id FROM `traces`'
+            sql = 'SELECT client, service, host, created, sent, done, exp_id, `traces`.request_id, status, content FROM `traces ` LEFT JOIN `trace_data` ON `trace_data`.request_id=`traces`.request_id'
             entries = self.db.fetchall(sql)
         else:
-            sql = "SELECT client, service, host, created, sent, done, exp_id FROM `traces` WHERE EXP_ID = " \
+            sql = "SELECT client, service, host, created, sent, done, exp_id, `traces`.request_id, status, content  FROM `traces` LEFT JOIN `trace_data` ON `trace_data`.request_id=`traces`.request_id WHERE EXP_ID = " \
                   + self.db.placeholder
             entries = self.db.fetchall(sql, (exp_id,))
 
-        return list(map(lambda x: ServiceRequestTrace(*(tuple(x))), entries))
+        return list(map(lambda x: ServiceRequestEntity(*(tuple(x))), entries))
 
     def save_telemetry(self, telemetry: List[Telemetry]):
         self.db.insert_many('telemetry', Telemetry._fields, telemetry)

@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from timeout_decorator import timeout_decorator
 
-from galileodb.model import ServiceRequestTrace
+from galileodb.model import ServiceRequestTrace, CompletedServiceRequest, ServiceRequestTraceData
 from galileodb.trace import TraceLogger, POISON, TraceRedisLogger, TraceDatabaseLogger, TraceFileLogger, START, \
     PAUSE, FLUSH
 from tests.testutils import RedisResource, SqliteResource, assert_poll
@@ -57,7 +57,7 @@ class AbstractTestTraceLogger(unittest.TestCase):
 
     def trigger_flush(self):
         for i in range(self.flush_interval):
-            self.queue.put(ServiceRequestTrace('client', 'service', 'host', i, 1, 1))
+            self.queue.put(ServiceRequestTrace('client', 'service', 'host', i, 1, 1, status=200))
 
     def send_message(self, msg):
         self.queue.put(msg)
@@ -70,12 +70,16 @@ class AbstractTraceLoggerTestCase:
         assert_poll(lambda: self.count_traces() == self.flush_interval, 'Logger did not write out traces')
 
     def test_flush_after_flush_msg(self):
-        self.send_message(ServiceRequestTrace('client', 'service', 'host', 1, 1, 1))
+        self.send_message(CompletedServiceRequest(
+            ServiceRequestTrace('client', 'service', 'host', 1, 1, 1, status=200, request_id='id'),
+            ServiceRequestTraceData('id', 'data')))
         self.send_message(FLUSH)
         assert_poll(lambda: self.count_traces() == 1, 'Not flushed after FLUSH')
 
     def test_flush_after_pause(self):
-        self.send_message(ServiceRequestTrace('client', 'service', 'host', 1, 1, 1))
+        self.send_message(
+            CompletedServiceRequest(
+                ServiceRequestTrace('client', 'service', 'host', 1, 1, 1, status=200, request_id='id')))
         self.send_message(PAUSE)
         assert_poll(lambda: self.count_traces() == 1, 'Logger did not flush after PAUSE')
 
@@ -100,7 +104,8 @@ class AbstractTraceLoggerTestCase:
 
     def trigger_flush(self):
         for i in range(self.flush_interval):
-            self.queue.put(ServiceRequestTrace('client', 'service', 'host', i, 1, 1))
+            self.queue.put(CompletedServiceRequest(
+                ServiceRequestTrace('client', 'service', 'host', i, 1, 1, status=200, request_id='id')))
 
     def assert_flush(self, n: int):
         raise NotImplementedError
