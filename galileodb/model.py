@@ -106,6 +106,20 @@ class ServiceRequestTrace(NamedTuple):
     def processing_time(self):
         return (self.done - self.sent) * 1000
 
+    @staticmethod
+    def from_entity(entity: 'ServiceRequestEntity'):
+        return ServiceRequestTrace(
+            entity.client,
+            entity.service,
+            entity.host,
+            entity.created,
+            entity.sent,
+            entity.done,
+            entity.exp_id,
+            entity.request_id,
+            entity.status
+        )
+
 
 class ServiceRequestTraceData(NamedTuple):
     request_id: str
