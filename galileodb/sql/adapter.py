@@ -100,28 +100,23 @@ class SqlAdapter(abc.ABC):
                 self._thread_local.connection = None
 
     def insert_one(self, table: str, data: Dict[str, object]):
-        columns, values = list(), list()
-
-        for key, value in data.items():
-            columns.append('`%s`' % key.upper())
-            values.append(value)
-
-        columns = ','.join(columns)
-        placeholders = ','.join([self.placeholder] * len(values))
+        columns = self.sql_field_list(data.keys())
+        placeholders = ','.join([self.placeholder] * len(data))
+        values = list(data.values())
 
         # TODO: sanitize table and column inputs
-        sql = 'INSERT INTO `%s` (%s) VALUES (%s)' % (table, columns, placeholders)
+        sql = f'INSERT INTO `{table}` ({columns}) VALUES ({placeholders})'
 
         logger.debug('running insert sql: %s' % sql)
 
         self.execute(sql, values)
 
     def insert_many(self, table: str, keys, data: List):
-        columns = ','.join(['`%s`' % key.upper() for key in keys])
+        columns = self.sql_field_list(keys)
         placeholders = ','.join([self.placeholder] * len(keys))
 
         # TODO: sanitize table and column inputs
-        sql = 'INSERT INTO `%s` (%s) VALUES (%s)' % (table, columns, placeholders)
+        sql = f'INSERT INTO `{table}` ({columns}) VALUES ({placeholders})'
 
         logger.debug('running insert many sql on %d items: %s', len(data), sql)
 
@@ -143,6 +138,16 @@ class SqlAdapter(abc.ABC):
 
         logger.debug('running update sql: %s', sql)
         self.execute(sql, values)
+
+    def sql_field_list(self, fields, table_prefix: str = None, uppercase=True) -> str:
+        return ', '.join([self.sql_field_name(field, table_prefix, uppercase) for field in fields])
+
+    def sql_field_name(self, field, table_prefix: str = None, uppercase=True):
+        f = field.upper() if uppercase else field
+        if table_prefix:
+            return f'`{table_prefix}`.`{f}`'
+        else:
+            return f'`{f}`'
 
     def _connect(self, *args, **kwargs):
         raise NotImplementedError
@@ -210,7 +215,6 @@ class ExperimentSQLDatabase(ExperimentDatabase):
 
     def save_traces(self, traces: List[ServiceRequestTrace]):
         self.db.insert_many('traces', ServiceRequestTrace._fields, traces)
-
 
     def save_trace_data(self, trace_data: List[ServiceRequestTraceData]):
         self.db.insert_many('trace_data', ServiceRequestTraceData._fields, trace_data)
