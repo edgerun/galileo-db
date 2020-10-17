@@ -3,7 +3,8 @@ import threading
 from abc import ABC
 from typing import Iterator
 
-from galileodb.model import ServiceRequestEntity
+from galileodb.model import RequestTrace
+from galileodb.reporter.traces import RedisTraceReporter
 from galileodb.trace import TraceLogger
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class TraceRecorder(threading.Thread, ABC):
         finally:
             self._sub.close()
 
-    def _record(self, service_request: ServiceRequestEntity):
+    def _record(self, service_request: RequestTrace):
         raise NotImplementedError
 
 
@@ -60,7 +61,7 @@ class RedisTraceRecorder(TraceRecorder):
             logger.debug('closing RedisTraceRecorder')
             self._flush()
 
-    def _record(self, t: ServiceRequestEntity):
+    def _record(self, t: RequestTrace):
         self.trace_logger.buffer.append(t)
 
         self.i = (self.i + 1) % self.flush_every
@@ -72,47 +73,51 @@ class RedisTraceRecorder(TraceRecorder):
 
 
 class TracesSubscriber:
-
-    def __init__(self, rds, pattern=None) -> None:
+    def __init__(self, rds, channel=None) -> None:
         super().__init__()
         self.rds = rds
-        self.pattern = pattern or 'galileo/results/traces'
+        self.channel = channel or RedisTraceReporter.channel
+        self.line_format = RedisTraceReporter.line_format
         self.pubsub = None
 
-    def run(self) -> Iterator[ServiceRequestEntity]:
+    def run(self) -> Iterator[RequestTrace]:
         self.pubsub = self.rds.pubsub()
 
         try:
-            self.pubsub.subscribe(self.pattern)
+            self.pubsub.subscribe(self.channel)
 
             for item in self.pubsub.listen():
                 data = item['data']
                 if type(data) == int:
                     continue
-
-                client, service, host, created, sent, done, exp_id, request_id, status, content = data.split(',')
-
-                if exp_id == 'None' or len(exp_id) == 0:
-                    exp_id = None
-
-                if content == 'None' or len(content) == 0:
-                    content = None
-
-                yield ServiceRequestEntity(
-                    client,
-                    service,
-                    host,
-                    float(created),
-                    float(sent),
-                    float(done),
-                    exp_id,
-                    request_id,
-                    int(status),
-                    content
-                )
+                try:
+                    yield self.parse(data)
+                except Exception as e:
+                    logger.error('error parsing data string `%s`: %s', data, e)
         finally:
             self.pubsub.close()
 
     def close(self):
         if self.pubsub:
-            self.pubsub.punsubscribe()
+            self.pubsub.unsubscribe()
+
+    @staticmethod
+    def parse(line: str) -> RequestTrace:
+        data = line.split(',')
+
+        for i in range(len(data)):
+            if data[i] == 'None':
+                data[i] = None
+
+        return RequestTrace(
+            request_id=data[0],
+            client=data[1],
+            service=data[2],
+            created=float(data[3]),
+            sent=float(data[4]),
+            done=float(data[5]),
+            status=int(data[6]),
+            response=data[7],
+            server=data[8],
+            exp_id=data[9],
+        )

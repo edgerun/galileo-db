@@ -7,7 +7,8 @@ from unittest.mock import patch
 
 from timeout_decorator import timeout_decorator
 
-from galileodb.model import ServiceRequestTrace, ServiceRequestEntity
+from galileodb.model import RequestTrace
+from galileodb.reporter.traces import RedisTraceReporter
 from galileodb.trace import TraceLogger, POISON, TraceRedisLogger, TraceDatabaseLogger, TraceFileLogger, START, \
     PAUSE, FLUSH
 from tests.testutils import RedisResource, SqliteResource, assert_poll
@@ -57,7 +58,7 @@ class AbstractTestTraceLogger(unittest.TestCase):
 
     def trigger_flush(self):
         for i in range(self.flush_interval):
-            self.queue.put(ServiceRequestTrace('client', 'service', 'host', i, 1, 1, status=200))
+            self.queue.put(RequestTrace(f'req{i}', 'client', 'service', 1, 1, 1, status=200, response='data'))
 
     def send_message(self, msg):
         self.queue.put(msg)
@@ -71,13 +72,13 @@ class AbstractTraceLoggerTestCase:
 
     def test_flush_after_flush_msg(self):
         self.send_message(
-            ServiceRequestEntity('client', 'service', 'host', 1, 1, 1, status=200, request_id='id', content='data')
+            RequestTrace('req01', 'client', 'service', 1, 1, 1, status=200, response='data')
         )
         self.send_message(FLUSH)
         assert_poll(lambda: self.count_traces() == 1, 'Not flushed after FLUSH')
 
     def test_flush_after_pause(self):
-        self.send_message(ServiceRequestEntity('client', 'service', 'host', 1, 1, 1, status=200, request_id='id'))
+        self.send_message(RequestTrace('req02', 'client', 'service', 1, 1, 1, status=200, response='data'))
         self.send_message(PAUSE)
         assert_poll(lambda: self.count_traces() == 1, 'Logger did not flush after PAUSE')
 
@@ -102,8 +103,7 @@ class AbstractTraceLoggerTestCase:
 
     def trigger_flush(self):
         for i in range(self.flush_interval):
-            self.queue.put(ServiceRequestEntity('client', 'service', 'host', 1, 1, 1, status=200, request_id='id',
-                                                content='data'))
+            self.queue.put(RequestTrace(f'req{i}', 'client', 'service', 1, 1, 1, status=200, response='data'))
 
     def assert_flush(self, n: int):
         raise NotImplementedError
@@ -118,7 +118,7 @@ class TestRedisTraceLogger(AbstractTraceLoggerTestCase, unittest.TestCase):
     def setUp(self) -> None:
         self.redis_resource.setUp()
         self.p = self.redis_resource.rds.pubsub(ignore_subscribe_messages=True)
-        self.p.subscribe(TraceRedisLogger.key)
+        self.p.subscribe(RedisTraceReporter.channel)
         self.queue = multiprocessing.Queue()
         self.logger = TraceRedisLogger(self.queue, self.redis_resource.rds)
         self.logger.flush_interval = 2
