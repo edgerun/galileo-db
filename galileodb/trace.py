@@ -9,7 +9,7 @@ from typing import List, Iterable
 import redis
 
 from galileodb.db import ExperimentDatabase
-from galileodb.model import ServiceRequestTrace, ServiceRequestEntity, ServiceRequestTraceData
+from galileodb.model import RequestTrace
 from galileodb.sql.adapter import ExperimentSQLDatabase
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ class TraceLogger(Process):
                 logger.debug('queue is empty, exitting')
                 return
 
-    def _do_flush(self, buffer: List[ServiceRequestEntity]):
+    def _do_flush(self, buffer: List[RequestTrace]):
         pass
 
 
@@ -112,7 +112,7 @@ class TraceRedisLogger(TraceLogger):
         super().__init__(trace_queue, start)
         self.rds = rds
 
-    def _do_flush(self, buffer: Iterable[ServiceRequestEntity]):
+    def _do_flush(self, buffer: Iterable[RequestTrace]):
         rds = self.rds.pipeline()
 
         for trace in buffer:
@@ -136,10 +136,8 @@ class TraceDatabaseLogger(TraceLogger):
             self.experiment_db.db.reconnect()
         super().run()
 
-    def _do_flush(self, buffer: Iterable[ServiceRequestEntity]):
-        self.experiment_db.save_traces(list([ServiceRequestTrace.from_entity(x) for x in buffer]))
-        self.experiment_db.save_trace_data(
-            list([ServiceRequestTraceData(x.request_id, x.content) for x in buffer if x.content is not None]))
+    def _do_flush(self, buffer: Iterable[RequestTrace]):
+        self.experiment_db.save_traces(self.buffer)
 
 
 class TraceFileLogger(TraceLogger):
@@ -160,9 +158,9 @@ class TraceFileLogger(TraceLogger):
 
         logger.debug('Initializing %s with header', self.file_path)
         with open(self.file_path, 'w') as fd:
-            csv.writer(fd).writerow(ServiceRequestTrace._fields)
+            csv.writer(fd).writerow(RequestTrace._fields)
 
-    def _do_flush(self, buffer: Iterable[ServiceRequestEntity]):
+    def _do_flush(self, buffer: Iterable[RequestTrace]):
         with open(self.file_path, 'a') as fd:
             writer = csv.writer(fd)
             for row in buffer:

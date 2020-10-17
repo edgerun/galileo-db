@@ -1,7 +1,7 @@
 import abc
 
 from galileodb import ExperimentDatabase, Experiment, Telemetry
-from galileodb.model import ExperimentEvent, ServiceRequestTrace, ServiceRequestTraceData, ServiceRequestEntity
+from galileodb.model import ExperimentEvent, RequestTrace
 
 
 class AbstractTestExperimentDatabase(abc.ABC):
@@ -67,10 +67,10 @@ class AbstractTestExperimentDatabase(abc.ABC):
 
     def test_save_and_touch_and_get_traces(self):
         traces = [
-            ServiceRequestTrace('c1', 's1', 'h1', 1.1, 1.2, 1.3, status=200, request_id='id1'),
-            ServiceRequestTrace('c2', 's2', 'h2', 2.1, 2.2, 2.3, status=200, request_id='id2'),
-            ServiceRequestTrace('c3', 's1', 'h1', 3.1, 3.2, 3.3, status=200, request_id='id3'),
-            ServiceRequestTrace('c1', 's1', 'h1', 4.1, 4.2, 4.3, status=200, request_id='id4'),
+            RequestTrace('req1', 'c1', 's1', 1.1, 1.2, 1.3, server='h1', status=200),
+            RequestTrace('req2', 'c2', 's2', 2.1, 2.2, 2.3, server='h2', status=200),
+            RequestTrace('req3', 'c3', 's1', 3.1, 3.2, 3.3, server='h1', status=200, response='time=123'),
+            RequestTrace('req4', 'c1', 's1', 4.1, 4.2, 4.3, server='h1', status=200),
         ]
 
         self.db.save_experiment(Experiment('exp1', start=1, end=3.5, status='FINISHED'))
@@ -82,42 +82,9 @@ class AbstractTestExperimentDatabase(abc.ABC):
         actual = self.db.get_traces('exp1')
 
         expected = [
-            ServiceRequestEntity('c1', 's1', 'h1', 1.1, 1.2, 1.3, exp_id='exp1', status=200, request_id='id1'),
-            ServiceRequestEntity('c2', 's2', 'h2', 2.1, 2.2, 2.3, exp_id='exp1', status=200, request_id='id2'),
-            ServiceRequestEntity('c3', 's1', 'h1', 3.1, 3.2, 3.3, exp_id='exp1', status=200, request_id='id3'),
-        ]
-
-        self.assertEqual(expected, actual)
-
-    def test_save_and_get_trace_data(self):
-        traces = [
-            ServiceRequestTrace('c1', 's1', 'h1', 1.1, 1.2, 1.3, status=200, request_id='id1'),
-            ServiceRequestTrace('c2', 's2', 'h2', 2.1, 2.2, 2.3, status=200, request_id='id2'),
-            ServiceRequestTrace('c3', 's1', 'h1', 3.1, 3.2, 3.3, status=200, request_id='id3'),
-            ServiceRequestTrace('c1', 's1', 'h1', 4.1, 4.2, 4.3, status=200, request_id='id4'),
-        ]
-
-        trace_data = [
-            ServiceRequestTraceData('id1', 'data1'),
-            ServiceRequestTraceData('id2', 'data2'),
-        ]
-
-        self.db.save_experiment(Experiment('exp1', start=1, end=3.5, status='FINISHED'))
-
-        self.db.save_traces(traces)
-
-        self.db.save_trace_data(trace_data)
-
-        self.db.touch_traces(self.db.get_experiment('exp1'))  # should touch the first 3
-
-        actual = self.db.get_traces('exp1')
-
-        expected = [
-            ServiceRequestEntity('c1', 's1', 'h1', 1.1, 1.2, 1.3, exp_id='exp1', status=200, request_id='id1',
-                                 content='data1'),
-            ServiceRequestEntity('c2', 's2', 'h2', 2.1, 2.2, 2.3, exp_id='exp1', status=200, request_id='id2',
-                                 content='data2'),
-            ServiceRequestEntity('c3', 's1', 'h1', 3.1, 3.2, 3.3, exp_id='exp1', status=200, request_id='id3'),
+            RequestTrace('req1', 'c1', 's1', 1.1, 1.2, 1.3, server='h1', status=200, exp_id='exp1'),
+            RequestTrace('req2', 'c2', 's2', 2.1, 2.2, 2.3, server='h2', status=200, exp_id='exp1'),
+            RequestTrace('req3', 'c3', 's1', 3.1, 3.2, 3.3, server='h1', status=200, response='time=123', exp_id='exp1')
         ]
 
         self.assertEqual(expected, actual)

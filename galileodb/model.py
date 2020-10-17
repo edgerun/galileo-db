@@ -83,69 +83,14 @@ class QueuedExperiment(NamedTuple):
     configuration: ExperimentConfiguration
 
 
-class ServiceRequestTrace(NamedTuple):
-    client: str
-    service: str
-    host: str
-    created: float
-    sent: float
-    done: float
-    exp_id: str = None
-    request_id: str = None
-    status: int = None
-
-    @property
-    def rt_time(self):
-        return (self.done - self.created) * 1000
-
-    @property
-    def queue_time(self):
-        return (self.sent - self.created) * 1000
-
-    @property
-    def processing_time(self):
-        return (self.done - self.sent) * 1000
-
-    @staticmethod
-    def from_entity(entity: 'ServiceRequestEntity'):
-        return ServiceRequestTrace(
-            entity.client,
-            entity.service,
-            entity.host,
-            entity.created,
-            entity.sent,
-            entity.done,
-            entity.exp_id,
-            entity.request_id,
-            entity.status
-        )
-
-
-class ServiceRequestTraceData(NamedTuple):
+class RequestTrace(NamedTuple):
     request_id: str
-    content: str
-
-
-class ServiceRequestEntity(NamedTuple):
     client: str
     service: str
-    host: str
     created: float
     sent: float
     done: float
+    status: int = -1
+    response: str = None
+    server: str = None
     exp_id: str = None
-    request_id: str = None
-    status: int = None
-    content: str = None
-
-    @property
-    def rt_time(self):
-        return (self.done - self.created) * 1000
-
-    @property
-    def queue_time(self):
-        return (self.sent - self.created) * 1000
-
-    @property
-    def processing_time(self):
-        return (self.done - self.sent) * 1000
