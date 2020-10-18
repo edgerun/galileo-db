@@ -117,9 +117,9 @@ class ExperimentEventRecorderThread(threading.Thread):
         super().__init__(*args, **kwargs)
         self.recorder = recorder
 
-    def stop(self):
+    def stop(self, timeout=None):
         self.recorder.close()
-        self.join()
+        self.join(timeout)
 
     def run(self) -> None:
         self.recorder.run()
