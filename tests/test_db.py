@@ -26,6 +26,12 @@ class AbstractTestExperimentDatabase(abc.ABC):
         self.assertEqual(1., actual.created)
         self.assertEqual('running', actual.status)
 
+    def test_save_experiment_and_get(self):
+        entity = Experiment('exp1', 'exp1-name', 'exp1-creator', 1.1, 2.2, status='FINISHED')
+        self.db.save_experiment(entity)
+        actual = self.db.get_experiment('exp1')
+        self.assertEqual(entity.__dict__, actual.__dict__)
+
     def test_update_experiment_and_get(self):
         exp = Experiment('expid8', 'test_experiment', 'unittest', 10, None, 1, 'running')
         self.db.save_experiment(exp)
