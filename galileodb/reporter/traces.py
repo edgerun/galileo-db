@@ -3,25 +3,9 @@ from typing import Iterable
 from galileodb.model import RequestTrace
 
 
-def _compile_line_format():
-    """
-    produces something like %s,%s,%s,%.7f,%.7f,... for the RequestTrace named tuple
-    :return: a string used for formatting the line
-    """
-
-    def placeholder(field):
-        if field == float:
-            return '%.7f'
-        if field == int:
-            return '%d'
-        return '%s'
-
-    return ','.join([placeholder(f) for f in RequestTrace._field_types.values()])
-
-
 class RedisTraceReporter:
     channel = 'galileo/results/traces'
-    line_format = _compile_line_format()
+    line_format = '%s,%s,%s,%.7f,%.7f,%.7f,%d,%s,%s,%s'
 
     def __init__(self, rds) -> None:
         super().__init__()
@@ -32,8 +16,24 @@ class RedisTraceReporter:
         key = self.channel
         fmt = self.line_format
 
-        for trace in traces:
-            value = fmt % trace
+        for t in traces:
+            # FIXME: this is turning into a bad line-based protocol ...
+            response = t.response
+            if response:
+                response = response.replace('\n', '\\n')
+
+            value = fmt % (
+                t.request_id,
+                t.client,
+                t.service,
+                t.created,
+                t.sent,
+                t.done,
+                t.status,
+                t.server,
+                t.exp_id,
+                response,
+            )
             rds.publish(key, value)
 
         rds.execute()

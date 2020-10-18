@@ -2,6 +2,8 @@ import os
 import shutil
 import tempfile
 import time
+from queue import Queue
+from threading import Thread, Event
 
 import redislite
 
@@ -74,3 +76,48 @@ class SqliteResource(AbstractTestSqlDatabase, TestResource):
     def tearDown(self) -> None:
         super().tearDown()
         os.remove(self.db_file)
+
+
+class RedisSubscriber:
+
+    def __init__(self, rds, channel, queue=None) -> None:
+        super().__init__()
+        self.rds = rds
+        self.channel = channel
+        self.queue = queue or Queue()
+        self.pubsub = rds.pubsub()
+        self.t = None
+
+        self._listening = Event()
+
+    def start(self) -> Thread:
+        if not self.t:
+            self.t = Thread(target=self.listen)
+            self.t.start()
+            self._listening.wait(2)
+
+        return self.t
+
+    def join(self, timeout):
+        if self.t:
+            self.t.join(timeout)
+
+    def listen(self):
+        self.pubsub.subscribe(self.channel)
+        try:
+            for item in self.pubsub.listen():
+                if item['type'] == 'subscribe':
+                    self._listening.set()
+                elif item['type'] == 'message':
+                    self.queue.put(item['data'])
+                else:
+                    print('ignoring pubsub data', item)
+        except:
+            return
+
+    def close(self):
+        self.pubsub.close()
+
+    def shutdown(self, timeout=1):
+        self.close()
+        self.join(timeout)

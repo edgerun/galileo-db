@@ -1,12 +1,10 @@
-from queue import Queue
-from threading import Thread
 from unittest import TestCase
 
 from timeout_decorator import timeout_decorator
 
 from galileodb.model import RequestTrace
 from galileodb.reporter.traces import RedisTraceReporter
-from tests.testutils import RedisResource
+from tests.testutils import RedisResource, RedisSubscriber
 
 
 class TestRedisTraceReporter(TestCase):
@@ -21,23 +19,8 @@ class TestRedisTraceReporter(TestCase):
     @timeout_decorator.timeout(5)
     def test_report_multiple(self):
         reporter = RedisTraceReporter(self.redis.rds)
-
-        pubsub = self.redis.rds.pubsub()
-        q = Queue()
-
-        def listen():
-            pubsub.subscribe(RedisTraceReporter.channel)
-            try:
-                for item in pubsub.listen():
-                    d = item['data']
-                    if type(d) == int:
-                        continue
-                    q.put(d)
-            except:
-                return
-
-        t = Thread(target=listen)
-        t.start()
+        subscriber = RedisSubscriber(self.redis.rds, RedisTraceReporter.channel)
+        subscriber.start()
 
         fixture = [
             RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, response='hello there'),
@@ -47,11 +30,36 @@ class TestRedisTraceReporter(TestCase):
         reporter.report_multiple(fixture)
 
         try:
-            data = q.get(timeout=1)
-            self.assertEqual(reporter.line_format % fixture[0], data)
-            data = q.get(timeout=1)
-            self.assertEqual(reporter.line_format % fixture[1], data)
-        finally:
-            pubsub.close()
+            data = subscriber.queue.get(timeout=1)
+            self.assertTrue('r1' in data)
+            self.assertTrue('r2' not in data)
+            self.assertTrue('server' not in data)
+            self.assertTrue('hello there' in data)
 
-        t.join(1)
+            data = subscriber.queue.get(timeout=1)
+            self.assertTrue('r1' not in data)
+            self.assertTrue('r2' in data)
+            self.assertTrue('server' in data)
+            self.assertTrue('hello there' not in data)
+
+            self.assertTrue(subscriber.queue.empty())
+        finally:
+            subscriber.shutdown()
+
+    @timeout_decorator.timeout(5)
+    def test_report_response_with_noisy_string(self):
+        reporter = RedisTraceReporter(self.redis.rds)
+        subscriber = RedisSubscriber(self.redis.rds, RedisTraceReporter.channel)
+
+        subscriber.start()
+
+        response = "foo=bar\nfield1=value1,a,b,c"
+
+        reporter.report_multiple([
+            RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, response=response),
+        ])
+
+        data = subscriber.queue.get(1)
+        self.assertEqual(r"r1,c1,s1,1.1000000,1.2000000,1.3000000,200,None,None,foo=bar\nfield1=value1,a,b,c", data)
+
+        subscriber.shutdown()

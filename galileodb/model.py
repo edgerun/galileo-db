@@ -91,6 +91,6 @@ class RequestTrace(NamedTuple):
     sent: float
     done: float
     status: int = -1
-    response: str = None
     server: str = None
     exp_id: str = None
+    response: str = None  # should be the last field for easier line-based transmission
