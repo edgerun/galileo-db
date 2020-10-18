@@ -276,7 +276,8 @@ class ExperimentSQLDatabase(ExperimentDatabase):
         self.db.insert_many('nodeinfo', keys, data)
 
     def find_all(self) -> List[Experiment]:
-        fields = self.db.sql_field_list(Experiment._fields)
+        fields = ['exp_id', 'name', 'creator', 'start', 'end', 'created', 'status']
+        fields = self.db.sql_field_list(fields)
 
         sql = f'SELECT {fields} FROM `experiments`'
 
@@ -285,7 +286,8 @@ class ExperimentSQLDatabase(ExperimentDatabase):
         return list(map(lambda x: Experiment(*(tuple(x))), entries))
 
     def get_running_experiment(self) -> Optional[Experiment]:
-        fields = self.db.sql_field_list(Experiment._fields)
+        fields = ['exp_id', 'name', 'creator', 'start', 'end', 'created', 'status']
+        fields = self.db.sql_field_list(fields)
         sql = f"SELECT {fields} FROM `experiments` WHERE `STATUS` = 'RUNNING'"
 
         entry = self.db.fetchone(sql)

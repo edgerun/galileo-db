@@ -32,6 +32,37 @@ class AbstractTestExperimentDatabase(abc.ABC):
         actual = self.db.get_experiment('exp1')
         self.assertEqual(entity.__dict__, actual.__dict__)
 
+    def test_save_experiment_and_find_all(self):
+        entity1 = Experiment('exp1', 'exp1-name', 'exp1-creator', 1.1, 2.2, status='FINISHED')
+        entity2 = Experiment('exp2', 'exp2-name', 'exp2-creator', 3.3, 4.4, status='RUNNING')
+        self.db.save_experiment(entity1)
+        self.db.save_experiment(entity2)
+
+        experiments = self.db.find_all()
+        self.assertEqual(2, len(experiments))
+        self.assertEqual(entity1.__dict__, experiments[0].__dict__)
+        self.assertEqual(entity2.__dict__, experiments[1].__dict__)
+
+    def test_get_running_experiment(self):
+        entity1 = Experiment('exp1', 'exp1-name', 'exp1-creator', 1.1, 2.2, status='FINISHED')
+        entity2 = Experiment('exp2', 'exp2-name', 'exp2-creator', 3.3, 4.4, status='RUNNING')
+        self.db.save_experiment(entity1)
+        self.db.save_experiment(entity2)
+
+        running = self.db.get_running_experiment()
+
+        self.assertEqual('exp2', running.id)
+
+    def test_get_running_experiment_on_empty_set(self):
+        entity1 = Experiment('exp1', 'exp1-name', 'exp1-creator', 1.1, 2.2, status='FINISHED')
+        entity2 = Experiment('exp2', 'exp2-name', 'exp2-creator', 3.3, 4.4, status='FINISHED')
+        self.db.save_experiment(entity1)
+        self.db.save_experiment(entity2)
+
+        running = self.db.get_running_experiment()
+
+        self.assertIsNone(running)
+
     def test_update_experiment_and_get(self):
         exp = Experiment('expid8', 'test_experiment', 'unittest', 10, None, 1, 'running')
         self.db.save_experiment(exp)
