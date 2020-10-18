@@ -1,6 +1,6 @@
 import time
 from abc import ABC
-from typing import List, Tuple
+from typing import List
 
 from galileodb.model import Experiment, Telemetry, NodeInfo, ExperimentEvent, RequestTrace
 

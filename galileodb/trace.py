@@ -4,9 +4,7 @@ import os
 from multiprocessing import Process
 from multiprocessing.queues import Queue
 from queue import Empty
-from typing import List, Iterable
-
-import redis
+from typing import List
 
 from galileodb.db import ExperimentDatabase
 from galileodb.model import RequestTrace
@@ -21,39 +19,45 @@ PAUSE = "__PAUSE__"
 FLUSH = '__FLUSH__'
 
 
-def mkdirp(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-    if os.path.isfile(path):
-        raise FileExistsError("%s is an existing file" % path)
+class TraceWriter:
+    def write(self, traces: List[RequestTrace]):
+        raise NotImplementedError
 
 
 class TraceLogger(Process):
     flush_interval = 20
 
-    def __init__(self, trace_queue: Queue, start=True) -> None:
+    def __init__(self, trace_queue: Queue, writer: TraceWriter = None, start=True) -> None:
         super().__init__()
         self.traces = trace_queue
         self.closed = False
         self.buffer = list()
+        self.writer = writer
         self.running = start
 
     def run(self):
         try:
-            return self._loop()
+            return self.listen()
         finally:
             self.flush()
 
     def flush(self):
         if not self.buffer:
-            logger.debug('Buffer empty, not flushing')
+            logger.debug('buffer empty, not flushing')
             return
 
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug('Flushing trace buffer')
+        logger.debug('flushing trace buffer')
 
-        self._do_flush(self.buffer)
+        if self.writer:
+            try:
+                self.writer.write(self.buffer)
+            except Exception as e:
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.exception('error writing traces')
+                else:
+                    logger.error('error writing traces: %s', e)
+        else:
+            logger.warning('empty writer')
 
         self.buffer.clear()
 
@@ -61,7 +65,7 @@ class TraceLogger(Process):
         self.closed = True
         self.traces.put(POISON)
 
-    def _loop(self):
+    def listen(self):
         timeout = None
         while True:
             if self.closed and timeout is None:
@@ -99,64 +103,71 @@ class TraceLogger(Process):
             except KeyboardInterrupt:
                 break
             except Empty:
-                logger.debug('queue is empty, exitting')
+                logger.debug('queue is empty, exiting')
                 return
 
-    def _do_flush(self, buffer: List[RequestTrace]):
-        pass
 
+class RedisTopicTraceWriter(TraceWriter):
 
-class TraceRedisLogger(TraceLogger):
-
-    def __init__(self, trace_queue: Queue, rds: redis.Redis, start=True) -> None:
-        super().__init__(trace_queue, start)
-        self.rds = rds
+    def __init__(self, rds) -> None:
+        super().__init__()
         self.reporter = RedisTraceReporter(rds)
 
-    def _do_flush(self, buffer: Iterable[RequestTrace]):
-        self.reporter.report_multiple(buffer)
+    def write(self, traces: List[RequestTrace]):
+        self.reporter.report_multiple(traces)
 
 
-class TraceDatabaseLogger(TraceLogger):
+class DatabaseTraceWriter(TraceWriter):
+    experiment_db: ExperimentDatabase
 
-    def __init__(self, trace_queue: Queue, experiment_db: ExperimentDatabase, start=True) -> None:
-        super().__init__(trace_queue, start)
+    def __init__(self, experiment_db: ExperimentDatabase) -> None:
         self.experiment_db = experiment_db
+        self.connected = False
 
-    def run(self):
+    def write(self, traces: List[RequestTrace]):
+        self._assert_connection()
+        self.experiment_db.save_traces(traces)
+
+    def _assert_connection(self):
+        # this is a terrible hack due to multiprocessing issues:
+        # close() will delete the threadlocal (which is not actually accessible from the process) and create a new
+        # connection. The SqlAdapter adapter design may be broken. or python multiprocessing...
+        if self.connected:
+            return
+
         if isinstance(self.experiment_db, ExperimentSQLDatabase):
-            # this is a terrible hack due to multiprocessing issues:
-            # close() will delete the threadlocal (which is not actually accessible from the process) and create a new
-            # connection. The SqlAdapter adapter design may be broken. or python multiprocessing...
             self.experiment_db.db.reconnect()
-        super().run()
-
-    def _do_flush(self, buffer: Iterable[RequestTrace]):
-        self.experiment_db.save_traces(self.buffer)
+            self.connected = True
 
 
-class TraceFileLogger(TraceLogger):
+class FileTraceWriter(TraceWriter):
 
-    def __init__(self, trace_queue: Queue, host_name, target_dir='/tmp/mc2/exp', start=True) -> None:
-        super().__init__(trace_queue, start)
+    def __init__(self, host_name, target_dir='/tmp/mc2/exp') -> None:
         self.target_dir = target_dir
         self.file_name = 'traces-%s.csv' % host_name
         self.file_path = os.path.join(self.target_dir, self.file_name)
-        mkdirp(self.target_dir)
-
+        self.mkdirp(self.target_dir)
         self.init_file()
 
     def init_file(self):
-        logger.debug('Initializing trace file logger to log into %s', self.file_path)
+        logger.debug('initializing trace file logger to log into %s', self.file_path)
         if os.path.exists(self.file_path):
             return
 
-        logger.debug('Initializing %s with header', self.file_path)
+        logger.debug('initializing %s with header', self.file_path)
         with open(self.file_path, 'w') as fd:
             csv.writer(fd).writerow(RequestTrace._fields)
 
-    def _do_flush(self, buffer: Iterable[RequestTrace]):
+    def write(self, buffer: List[RequestTrace]):
         with open(self.file_path, 'a') as fd:
             writer = csv.writer(fd)
             for row in buffer:
                 writer.writerow(row)
+
+    @staticmethod
+    def mkdirp(path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        if os.path.isfile(path):
+            raise FileExistsError("%s is an existing file" % path)

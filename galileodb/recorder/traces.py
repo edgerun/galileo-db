@@ -5,7 +5,7 @@ from typing import Iterator
 
 from galileodb.model import RequestTrace
 from galileodb.reporter.traces import RedisTraceReporter
-from galileodb.trace import TraceLogger
+from galileodb.trace import TraceWriter
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +46,10 @@ class TraceRecorder(threading.Thread, ABC):
 
 class RedisTraceRecorder(TraceRecorder):
 
-    def __init__(self, rds, trace_logger: TraceLogger, flush_every=36) -> None:
+    def __init__(self, rds, writer: TraceWriter, flush_every=36) -> None:
         super().__init__(rds)
-        self.trace_logger = trace_logger
+        self.writer = writer
+        self.buffer = list()
 
         self.flush_every = flush_every
         self.i = 0
@@ -62,14 +63,15 @@ class RedisTraceRecorder(TraceRecorder):
             self._flush()
 
     def _record(self, t: RequestTrace):
-        self.trace_logger.buffer.append(t)
+        self.buffer.append(t)
 
         self.i = (self.i + 1) % self.flush_every
         if self.i == 0:
             self._flush()
 
     def _flush(self):
-        self.trace_logger.flush()
+        self.writer.write(self.buffer)
+        self.buffer.clear()
 
 
 class TracesSubscriber:

@@ -9,12 +9,19 @@ from timeout_decorator import timeout_decorator
 
 from galileodb.model import RequestTrace
 from galileodb.reporter.traces import RedisTraceReporter
-from galileodb.trace import TraceLogger, POISON, TraceRedisLogger, TraceDatabaseLogger, TraceFileLogger, START, \
-    PAUSE, FLUSH
+from galileodb.trace import TraceLogger, POISON, START, PAUSE, FLUSH, TraceWriter, FileTraceWriter, \
+    RedisTopicTraceWriter, DatabaseTraceWriter
 from tests.testutils import RedisResource, SqliteResource, assert_poll, RedisSubscriber
 
+traces = [
+    RequestTrace('req1', 'client', 'service', 1.1, 1.2, 1.3),
+    RequestTrace('req2', 'client', 'service', 2.2, 2.3, 2.4, 200, 'server1', 'exp1', 'hello'),
+    RequestTrace('req3', 'client', 'service', 3.2, 3.3, 3.4, status=200, server='server1',
+                 response='foo=bar\nx=1,"2",3')
+]
 
-class AbstractTestTraceLogger(unittest.TestCase):
+
+class TestTraceLogger(unittest.TestCase):
 
     def setUp(self) -> None:
         self.queue = multiprocessing.Queue()
@@ -48,162 +55,123 @@ class AbstractTestTraceLogger(unittest.TestCase):
         self.send_message(POISON)
         assert_poll(lambda: flush.called_once(), 'Flush was not called after POISON')
 
-    @timeout_decorator.timeout(5)
     def test_running_after_start(self):
         self.send_message(START)
         assert_poll(lambda: self.logger.running, 'Logger not running after START')
 
-    @timeout_decorator.timeout(5)
     def test_not_running_after_pause(self):
         self.send_message(PAUSE)
         assert_poll(lambda: not self.logger.running, 'Logger running after PAUSE')
 
-    def trigger_flush(self):
-        for i in range(self.flush_interval):
-            self.queue.put(RequestTrace(f'req{i}', 'client', 'service', 1, 1, 1, status=200, response='data'))
-
-    def send_message(self, msg):
-        self.queue.put(msg)
-
-
-class AbstractTraceLoggerTestCase:
-
-    @timeout_decorator.timeout(5)
-    def test_flush(self):
-        self.trigger_flush()
-        assert_poll(lambda: self.count_traces() == self.flush_interval, 'Logger did not write out traces')
-
-    @timeout_decorator.timeout(5)
-    def test_flush_after_flush_msg(self):
-        self.send_message(
-            RequestTrace('req01', 'client', 'service', 1, 1, 1, status=200, response='data')
-        )
-        self.send_message(FLUSH)
-        assert_poll(lambda: self.count_traces() == 1, 'Not flushed after FLUSH')
-
-    @timeout_decorator.timeout(5)
-    def test_flush_after_pause(self):
-        self.send_message(RequestTrace('req02', 'client', 'service', 1, 1, 1, status=200, response='data'))
+    @patch('galileodb.trace.TraceLogger.flush')
+    def test_discarding_messages_in_paused_state(self, flush):
         self.send_message(PAUSE)
-        assert_poll(lambda: self.count_traces() == 1, 'Logger did not flush after PAUSE')
+        assert_poll(lambda: not self.logger.running, 'Logger running after PAUSE')
 
-    @timeout_decorator.timeout(5)
-    def test_discarding_messages_in_paused_state(self):
-        self.send_message(PAUSE)
-        self.trigger_flush()
+        self.queue.put(traces[0])
+        self.queue.put(traces[1])
+
         sleep(0.5)
-        self.assert_flush(0)
+        self.assertEqual(0, len(self.logger.buffer), 'buffer should not be filled when logger is paused')
 
-    @timeout_decorator.timeout(5)
-    def test_recording_messages_after_starting(self):
-        self.send_message(PAUSE)
-        self.trigger_flush()
-        sleep(0.5)
-        self.assert_flush(0)
         self.send_message(START)
-        self.trigger_flush()
-        assert_poll(lambda: self.count_traces() == self.flush_interval,
-                    'Logger did not flush after setting it back to active')
+        assert_poll(lambda: self.logger.running, 'Logger not running after START')
 
-    def send_message(self, msg):
-        self.queue.put(msg)
+        self.queue.put(traces[2])
+        assert_poll(lambda: len(self.logger.buffer) == 1, 'buffer should contain one message after started')
+
+    def test_flush_calls_writer(self):
+        written = list()
+
+        class DummyWriter(TraceWriter):
+            def write(self, buffer):
+                written.extend(buffer)
+
+        self.logger.writer = DummyWriter()
+
+        self.trigger_flush()
+
+        assert_poll(lambda: len(written) == self.flush_interval)
 
     def trigger_flush(self):
         for i in range(self.flush_interval):
             self.queue.put(RequestTrace(f'req{i}', 'client', 'service', 1, 1, 1, status=200, response='data'))
 
-    def assert_flush(self, n: int):
-        raise NotImplementedError
-
-    def count_traces(self) -> int:
-        raise NotImplementedError
+    def send_message(self, msg):
+        self.queue.put(msg)
 
 
-class TestRedisTraceLogger(AbstractTraceLoggerTestCase, unittest.TestCase):
-    redis_resource = RedisResource()
-
-    def setUp(self) -> None:
-        self.redis_resource.setUp()
-
-        self.sub = RedisSubscriber(self.redis_resource.rds, RedisTraceReporter.channel)
-        self.sub.start()
-
-        self.queue = multiprocessing.Queue()
-        self.logger = TraceRedisLogger(self.queue, self.redis_resource.rds)
-        self.logger.flush_interval = 2
-        self.flush_interval = 2
-        self.thread = threading.Thread(target=self.logger.run)
-        self.thread.start()
-
-    def tearDown(self) -> None:
-        self.sub.shutdown()
-        if not self.logger.closed:
-            self.logger.close()
-        self.thread.join(2)
-        self.redis_resource.tearDown()
-
-    @timeout_decorator.timeout(5)
-    def assert_flush(self, n):
-        assert_poll(lambda: self.sub.queue.qsize() >= n)
-
-    @timeout_decorator.timeout(5)
-    def count_traces(self) -> int:
-        return self.sub.queue.qsize()
-
-
-class TestTraceDatabaseLogger(AbstractTraceLoggerTestCase, unittest.TestCase):
+class TestDatabaseTraceWriter(unittest.TestCase):
     sql_resource = SqliteResource()
 
     def setUp(self) -> None:
         self.sql_resource.setUp()
-        self.queue = multiprocessing.Queue()
-        self.logger = TraceDatabaseLogger(self.queue, self.sql_resource.db)
-        self.logger.flush_interval = 2
-        self.flush_interval = 2
-        self.thread = threading.Thread(target=self.logger.run)
-        self.thread.start()
 
     def tearDown(self) -> None:
-        if not self.logger.closed:
-            self.logger.close()
-        self.thread.join(2)
         self.sql_resource.tearDown()
 
     @timeout_decorator.timeout(5)
-    def assert_flush(self, n):
-        traces = self.sql_resource.sql.fetchall('SELECT * FROM `traces`')
-        self.assertEqual(len(traces), n)
+    def test_write(self):
+        self.writer = DatabaseTraceWriter(self.sql_resource.db)
+        self.writer.write(traces)
+
+        actual = self.sql_resource.db.get_traces()
+
+        self.assertEqual(3, len(actual))
+
+        self.assertEqual(traces[0], actual[0])
+        self.assertEqual(traces[1], actual[1])
+        self.assertEqual(traces[2], actual[2])
+
+
+class TestRedisTopicTraceWriter(unittest.TestCase):
+    redis_resource = RedisResource()
+    writer: RedisTopicTraceWriter
+
+    def setUp(self) -> None:
+        self.redis_resource.setUp()
+
+        self.writer = RedisTopicTraceWriter(self.redis_resource.rds)
+        self.sub = RedisSubscriber(self.redis_resource.rds, RedisTraceReporter.channel)
+        self.sub.start()
+
+    def tearDown(self) -> None:
+        self.sub.shutdown()
+        self.redis_resource.tearDown()
 
     @timeout_decorator.timeout(5)
-    def count_traces(self) -> int:
-        return len(self.sql_resource.sql.fetchall('SELECT * FROM `traces`'))
+    def test_write(self):
+        self.writer.write(traces)
+
+        t1 = self.sub.queue.get(timeout=2)
+        self.assertEqual(t1, 'req1,client,service,1.1000000,1.2000000,1.3000000,-1,None,None,None')
+        t2 = self.sub.queue.get(timeout=2)
+        self.assertEqual(t2, 'req2,client,service,2.2000000,2.3000000,2.4000000,200,server1,exp1,hello')
+        t3 = self.sub.queue.get(timeout=2)
+        self.assertEqual(t3, r'req3,client,service,3.2000000,3.3000000,3.4000000,200,server1,None,foo=bar\nx=1,"2",3')
 
 
-class TestTraceFileLogger(AbstractTraceLoggerTestCase, unittest.TestCase):
+class TestFileTraceWriter(unittest.TestCase):
     target_dir = '/tmp/galileo_test'
 
     def setUp(self) -> None:
-        self.queue = multiprocessing.Queue()
-        self.logger = TraceFileLogger(self.queue, 'test', self.target_dir)
-        self.logger.flush_interval = 2
-        self.flush_interval = 2
-        self.thread = threading.Thread(target=self.logger.run)
-        self.thread.start()
+        self.writer = FileTraceWriter('test', self.target_dir)
 
     def tearDown(self) -> None:
-        if not self.logger.closed:
-            self.logger.close()
-        self.thread.join(2)
         shutil.rmtree(self.target_dir)
 
-    @timeout_decorator.timeout(5)
-    def assert_flush(self, n):
-        with open(self.logger.file_path, 'r') as fd:
-            # do not count header
-            self.assertEqual(len(fd.readlines()) - 1, n)
+    def test_write(self):
+        self.writer.write(traces[:1])
+        self.writer.write(traces[1:])  # makes sure consecutive write calls append to file
 
-    @timeout_decorator.timeout(5)
-    def count_traces(self) -> int:
-        with open(self.logger.file_path, 'r') as fd:
-            # do not count header
-            return len(fd.readlines()) - 1
+        expected = \
+            'request_id,client,service,created,sent,done,status,server,exp_id,response\n' + \
+            'req1,client,service,1.1,1.2,1.3,-1,,,\n' + \
+            'req2,client,service,2.2,2.3,2.4,200,server1,exp1,hello\n' + \
+            'req3,client,service,3.2,3.3,3.4,200,server1,,"foo=bar\n' + \
+            'x=1,""2"",3"'  # this is just how the csv writer resolves the double quotes ...
+
+        with open(self.writer.file_path) as fd:
+            actual = fd.read()
+
+        self.assertEqual(expected.strip(), actual.strip())
