@@ -7,10 +7,11 @@ from unittest.mock import patch
 
 from timeout_decorator import timeout_decorator
 
-from galileodb.model import ServiceRequestTrace
+from galileodb.model import RequestTrace
+from galileodb.reporter.traces import RedisTraceReporter
 from galileodb.trace import TraceLogger, POISON, TraceRedisLogger, TraceDatabaseLogger, TraceFileLogger, START, \
     PAUSE, FLUSH
-from tests.testutils import RedisResource, SqliteResource, assert_poll
+from tests.testutils import RedisResource, SqliteResource, assert_poll, RedisSubscriber
 
 
 class AbstractTestTraceLogger(unittest.TestCase):
@@ -47,17 +48,19 @@ class AbstractTestTraceLogger(unittest.TestCase):
         self.send_message(POISON)
         assert_poll(lambda: flush.called_once(), 'Flush was not called after POISON')
 
+    @timeout_decorator.timeout(5)
     def test_running_after_start(self):
         self.send_message(START)
         assert_poll(lambda: self.logger.running, 'Logger not running after START')
 
+    @timeout_decorator.timeout(5)
     def test_not_running_after_pause(self):
         self.send_message(PAUSE)
         assert_poll(lambda: not self.logger.running, 'Logger running after PAUSE')
 
     def trigger_flush(self):
         for i in range(self.flush_interval):
-            self.queue.put(ServiceRequestTrace('client', 'service', 'host', i, 1, 1))
+            self.queue.put(RequestTrace(f'req{i}', 'client', 'service', 1, 1, 1, status=200, response='data'))
 
     def send_message(self, msg):
         self.queue.put(msg)
@@ -65,26 +68,33 @@ class AbstractTestTraceLogger(unittest.TestCase):
 
 class AbstractTraceLoggerTestCase:
 
+    @timeout_decorator.timeout(5)
     def test_flush(self):
         self.trigger_flush()
         assert_poll(lambda: self.count_traces() == self.flush_interval, 'Logger did not write out traces')
 
+    @timeout_decorator.timeout(5)
     def test_flush_after_flush_msg(self):
-        self.send_message(ServiceRequestTrace('client', 'service', 'host', 1, 1, 1))
+        self.send_message(
+            RequestTrace('req01', 'client', 'service', 1, 1, 1, status=200, response='data')
+        )
         self.send_message(FLUSH)
         assert_poll(lambda: self.count_traces() == 1, 'Not flushed after FLUSH')
 
+    @timeout_decorator.timeout(5)
     def test_flush_after_pause(self):
-        self.send_message(ServiceRequestTrace('client', 'service', 'host', 1, 1, 1))
+        self.send_message(RequestTrace('req02', 'client', 'service', 1, 1, 1, status=200, response='data'))
         self.send_message(PAUSE)
         assert_poll(lambda: self.count_traces() == 1, 'Logger did not flush after PAUSE')
 
+    @timeout_decorator.timeout(5)
     def test_discarding_messages_in_paused_state(self):
         self.send_message(PAUSE)
         self.trigger_flush()
         sleep(0.5)
         self.assert_flush(0)
 
+    @timeout_decorator.timeout(5)
     def test_recording_messages_after_starting(self):
         self.send_message(PAUSE)
         self.trigger_flush()
@@ -100,7 +110,7 @@ class AbstractTraceLoggerTestCase:
 
     def trigger_flush(self):
         for i in range(self.flush_interval):
-            self.queue.put(ServiceRequestTrace('client', 'service', 'host', i, 1, 1))
+            self.queue.put(RequestTrace(f'req{i}', 'client', 'service', 1, 1, 1, status=200, response='data'))
 
     def assert_flush(self, n: int):
         raise NotImplementedError
@@ -114,6 +124,10 @@ class TestRedisTraceLogger(AbstractTraceLoggerTestCase, unittest.TestCase):
 
     def setUp(self) -> None:
         self.redis_resource.setUp()
+
+        self.sub = RedisSubscriber(self.redis_resource.rds, RedisTraceReporter.channel)
+        self.sub.start()
+
         self.queue = multiprocessing.Queue()
         self.logger = TraceRedisLogger(self.queue, self.redis_resource.rds)
         self.logger.flush_interval = 2
@@ -122,6 +136,7 @@ class TestRedisTraceLogger(AbstractTraceLoggerTestCase, unittest.TestCase):
         self.thread.start()
 
     def tearDown(self) -> None:
+        self.sub.shutdown()
         if not self.logger.closed:
             self.logger.close()
         self.thread.join(2)
@@ -129,12 +144,11 @@ class TestRedisTraceLogger(AbstractTraceLoggerTestCase, unittest.TestCase):
 
     @timeout_decorator.timeout(5)
     def assert_flush(self, n):
-        traces = self.redis_resource.rds.zrange(self.logger.key, 0, -1)
-        self.assertEqual(len(traces), n)
+        assert_poll(lambda: self.sub.queue.qsize() >= n)
 
     @timeout_decorator.timeout(5)
     def count_traces(self) -> int:
-        return self.redis_resource.rds.zcard(self.logger.key)
+        return self.sub.queue.qsize()
 
 
 class TestTraceDatabaseLogger(AbstractTraceLoggerTestCase, unittest.TestCase):

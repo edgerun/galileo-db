@@ -2,7 +2,7 @@ import time
 from abc import ABC
 from typing import List, Tuple
 
-from galileodb.model import Experiment, Telemetry, NodeInfo, ExperimentEvent, ServiceRequestTrace
+from galileodb.model import Experiment, Telemetry, NodeInfo, ExperimentEvent, RequestTrace
 
 
 class ExperimentDatabase(ABC):
@@ -25,10 +25,10 @@ class ExperimentDatabase(ABC):
     def get_experiment(self, exp_id: str) -> Experiment:
         raise NotImplementedError
 
-    def save_traces(self, traces: List[Tuple]):
+    def save_traces(self, traces: List[RequestTrace]):
         """
-        Saves multiple ServiceRequestTrace tuples.
-        :param traces: a list of ServiceRequestTrace tuples
+        Saves multiple RequestTrace tuples.
+        :param traces: a list of RequestTrace tuples
         :return:
         """
         raise NotImplementedError
@@ -36,7 +36,7 @@ class ExperimentDatabase(ABC):
     def touch_traces(self, experiment: Experiment):
         raise NotImplementedError
 
-    def get_traces(self, exp_id: str = None) -> List[ServiceRequestTrace]:
+    def get_traces(self, exp_id: str = None) -> List[RequestTrace]:
         raise NotImplementedError
 
     def save_telemetry(self, telemetry: List[Telemetry]):

@@ -1,5 +1,7 @@
 from galileodb.recorder.events import ExperimentEventRecorderThread, ExperimentEventRecorder
 from galileodb.recorder.telemetry import ExperimentTelemetryRecorder
+from galileodb.recorder.traces import RedisTraceRecorder
+from galileodb.trace import TraceDatabaseLogger
 
 
 class Recorder:
@@ -11,15 +13,19 @@ class Recorder:
 
         self.telemetry_recorder = ExperimentTelemetryRecorder(rds, exp_db, experiment_id)
         self.event_recorder = ExperimentEventRecorderThread(ExperimentEventRecorder(rds, exp_db, experiment_id))
+        self.trace_recorder = RedisTraceRecorder(rds, TraceDatabaseLogger(None, exp_db, start=False))  # FIXME
 
     def start(self):
         self.telemetry_recorder.start()
         self.event_recorder.start()
+        self.trace_recorder.start()
 
-    def join(self):
-        self.telemetry_recorder.join()
-        self.event_recorder.join()
+    def join(self, timeout=None):
+        self.telemetry_recorder.join(timeout)
+        self.event_recorder.join(timeout)
+        self.trace_recorder.join(timeout)
 
-    def stop(self):
-        self.telemetry_recorder.stop()
-        self.event_recorder.stop()
+    def stop(self, timeout=None):
+        self.telemetry_recorder.stop(timeout)
+        self.event_recorder.stop(timeout)
+        self.trace_recorder.stop(timeout)

@@ -68,7 +68,11 @@ def run(args):
         exp_db.finalize_experiment(exp, 'FINISHED')
         logger.info('shutting down experiment recorder')
         if recorder:
-            recorder.stop()
+            try:
+                recorder.stop(5)
+            except:
+                pass
+
         exp_db.close()
 
     logger.info('experiment %s exiting', exp.id)

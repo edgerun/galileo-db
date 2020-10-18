@@ -5,7 +5,7 @@ import threading
 from typing import Tuple, List, Dict, Optional
 
 from galileodb.db import ExperimentDatabase
-from galileodb.model import Experiment, Telemetry, ServiceRequestTrace, NodeInfo, ExperimentEvent
+from galileodb.model import Experiment, Telemetry, RequestTrace, NodeInfo, ExperimentEvent
 
 logger = logging.getLogger(__name__)
 
@@ -99,28 +99,23 @@ class SqlAdapter(abc.ABC):
                 self._thread_local.connection = None
 
     def insert_one(self, table: str, data: Dict[str, object]):
-        columns, values = list(), list()
-
-        for key, value in data.items():
-            columns.append('`%s`' % key.upper())
-            values.append(value)
-
-        columns = ','.join(columns)
-        placeholders = ','.join([self.placeholder] * len(values))
+        columns = self.sql_field_list(data.keys())
+        placeholders = ','.join([self.placeholder] * len(data))
+        values = list(data.values())
 
         # TODO: sanitize table and column inputs
-        sql = 'INSERT INTO `%s` (%s) VALUES (%s)' % (table, columns, placeholders)
+        sql = f'INSERT INTO `{table}` ({columns}) VALUES ({placeholders})'
 
         logger.debug('running insert sql: %s' % sql)
 
         self.execute(sql, values)
 
     def insert_many(self, table: str, keys, data: List):
-        columns = ','.join(['`%s`' % key.upper() for key in keys])
+        columns = self.sql_field_list(keys)
         placeholders = ','.join([self.placeholder] * len(keys))
 
         # TODO: sanitize table and column inputs
-        sql = 'INSERT INTO `%s` (%s) VALUES (%s)' % (table, columns, placeholders)
+        sql = f'INSERT INTO `{table}` ({columns}) VALUES ({placeholders})'
 
         logger.debug('running insert many sql on %d items: %s', len(data), sql)
 
@@ -142,6 +137,16 @@ class SqlAdapter(abc.ABC):
 
         logger.debug('running update sql: %s', sql)
         self.execute(sql, values)
+
+    def sql_field_list(self, fields, table_prefix: str = None, uppercase=True) -> str:
+        return ', '.join([self.sql_field_name(field, table_prefix, uppercase) for field in fields])
+
+    def sql_field_name(self, field, table_prefix: str = None, uppercase=True):
+        f = field.upper() if uppercase else field
+        if table_prefix:
+            return f'`{table_prefix}`.`{f}`'
+        else:
+            return f'`{f}`'
 
     def _connect(self, *args, **kwargs):
         raise NotImplementedError
@@ -197,7 +202,7 @@ class ExperimentSQLDatabase(ExperimentDatabase):
                 logger.exception('Exception while executing %s', sql, e)
 
     def get_experiment(self, exp_id: str) -> Experiment:
-        sql = "SELECT * FROM `experiments` WHERE EXP_ID = " + self.db.placeholder
+        sql = f'SELECT * FROM `experiments` WHERE EXP_ID = {self.db.placeholder}'
 
         entry = self.db.fetchone(sql, (exp_id,))
 
@@ -207,34 +212,37 @@ class ExperimentSQLDatabase(ExperimentDatabase):
         else:
             return None
 
-    def save_traces(self, traces: List[ServiceRequestTrace]):
-        self.db.insert_many('traces', ServiceRequestTrace._fields, traces)
+    def save_traces(self, traces: List[RequestTrace]):
+        self.db.insert_many('traces', RequestTrace._fields, traces)
 
     def touch_traces(self, experiment: Experiment):
         sql = 'UPDATE `traces` SET `EXP_ID` = ? WHERE CREATED >= ? AND CREATED <= ?'
         sql = sql.replace('?', self.db.placeholder)
         self.db.execute(sql, (experiment.id, experiment.start, experiment.end))
 
-    def get_traces(self, exp_id=None) -> List[ServiceRequestTrace]:
+    def get_traces(self, exp_id=None) -> List[RequestTrace]:
+        fields = self.db.sql_field_list(RequestTrace._fields)
+
         if exp_id is None:
-            sql = 'SELECT client, service, host, created, sent, done, exp_id FROM `traces`'
+            sql = f'SELECT {fields} from `traces`'
             entries = self.db.fetchall(sql)
         else:
-            sql = "SELECT client, service, host, created, sent, done, exp_id FROM `traces` WHERE EXP_ID = " \
-                  + self.db.placeholder
+            sql = f'SELECT {fields} from `traces` WHERE EXP_ID = {self.db.placeholder}'
             entries = self.db.fetchall(sql, (exp_id,))
 
-        return list(map(lambda x: ServiceRequestTrace(*(tuple(x))), entries))
+        return list(map(lambda x: RequestTrace(*(tuple(x))), entries))
 
     def save_telemetry(self, telemetry: List[Telemetry]):
         self.db.insert_many('telemetry', Telemetry._fields, telemetry)
 
     def get_telemetry(self, exp_id=None) -> List[Telemetry]:
+        fields = self.db.sql_field_list(Telemetry._fields)
+
         if exp_id is None:
-            sql = 'SELECT `timestamp`, `metric`, `node`, `value`, `exp_id` FROM `telemetry`'
+            sql = f'SELECT {fields} FROM `telemetry`'
             entries = self.db.fetchall(sql)
         else:
-            sql = "SELECT `timestamp`, `metric`, `node`, `value`, `exp_id` FROM `telemetry` WHERE EXP_ID = " + self.db.placeholder
+            sql = f'SELECT {fields} FROM `telemetry` WHERE EXP_ID = {self.db.placeholder}'
             entries = self.db.fetchall(sql, (exp_id,))
 
         return list(map(lambda x: Telemetry(*(tuple(x))), entries))
@@ -246,17 +254,19 @@ class ExperimentSQLDatabase(ExperimentDatabase):
         self.db.insert_many('events', ExperimentEvent._fields, events)
 
     def get_events(self, exp_id=None) -> List[ExperimentEvent]:
+        fields = self.db.sql_field_list(ExperimentEvent._fields)
+
         if exp_id is None:
-            sql = 'SELECT * FROM `events`'
+            sql = f'SELECT {fields} FROM `events`'
             entries = self.db.fetchall(sql)
         else:
-            sql = "SELECT * FROM `events` WHERE EXP_ID = " + self.db.placeholder
+            sql = f'SELECT {fields} FROM `events` WHERE EXP_ID = {self.db.placeholder}'
             entries = self.db.fetchall(sql, (exp_id,))
 
         return list(map(lambda x: ExperimentEvent(*(tuple(x))), entries))
 
     def save_nodeinfos(self, infos: List[NodeInfo]):
-        keys = ['exp_id', 'node', 'info_key', 'info_value']
+        keys = ('exp_id', 'node', 'info_key', 'info_value')
 
         data = list()
         for info in infos:
@@ -266,14 +276,17 @@ class ExperimentSQLDatabase(ExperimentDatabase):
         self.db.insert_many('nodeinfo', keys, data)
 
     def find_all(self) -> List[Experiment]:
-        sql = 'SELECT * FROM `experiments`'
+        fields = self.db.sql_field_list(Experiment._fields)
+
+        sql = f'SELECT {fields} FROM `experiments`'
 
         entries = self.db.fetchall(sql)
 
         return list(map(lambda x: Experiment(*(tuple(x))), entries))
 
     def get_running_experiment(self) -> Optional[Experiment]:
-        sql = "SELECT * FROM `experiments` WHERE `STATUS` = 'RUNNING'"
+        fields = self.db.sql_field_list(Experiment._fields)
+        sql = f"SELECT {fields} FROM `experiments` WHERE `STATUS` = 'RUNNING'"
 
         entry = self.db.fetchone(sql)
 

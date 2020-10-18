@@ -1,7 +1,7 @@
 import abc
 
 from galileodb import ExperimentDatabase, Experiment, Telemetry
-from galileodb.model import ExperimentEvent, ServiceRequestTrace
+from galileodb.model import ExperimentEvent, RequestTrace
 
 
 class AbstractTestExperimentDatabase(abc.ABC):
@@ -67,10 +67,10 @@ class AbstractTestExperimentDatabase(abc.ABC):
 
     def test_save_and_touch_and_get_traces(self):
         traces = [
-            ServiceRequestTrace('c1', 's1', 'h1', 1.1, 1.2, 1.3),
-            ServiceRequestTrace('c2', 's2', 'h2', 2.1, 2.2, 2.3),
-            ServiceRequestTrace('c3', 's1', 'h1', 3.1, 3.2, 3.3),
-            ServiceRequestTrace('c1', 's1', 'h1', 4.1, 4.2, 4.3),
+            RequestTrace('req1', 'c1', 's1', 1.1, 1.2, 1.3, server='h1', status=200),
+            RequestTrace('req2', 'c2', 's2', 2.1, 2.2, 2.3, server='h2', status=200),
+            RequestTrace('req3', 'c3', 's1', 3.1, 3.2, 3.3, server='h1', status=200, response='time=123'),
+            RequestTrace('req4', 'c1', 's1', 4.1, 4.2, 4.3, server='h1', status=200),
         ]
 
         self.db.save_experiment(Experiment('exp1', start=1, end=3.5, status='FINISHED'))
@@ -82,9 +82,9 @@ class AbstractTestExperimentDatabase(abc.ABC):
         actual = self.db.get_traces('exp1')
 
         expected = [
-            ServiceRequestTrace('c1', 's1', 'h1', 1.1, 1.2, 1.3, 'exp1'),
-            ServiceRequestTrace('c2', 's2', 'h2', 2.1, 2.2, 2.3, 'exp1'),
-            ServiceRequestTrace('c3', 's1', 'h1', 3.1, 3.2, 3.3, 'exp1'),
+            RequestTrace('req1', 'c1', 's1', 1.1, 1.2, 1.3, server='h1', status=200, exp_id='exp1'),
+            RequestTrace('req2', 'c2', 's2', 2.1, 2.2, 2.3, server='h2', status=200, exp_id='exp1'),
+            RequestTrace('req3', 'c3', 's1', 3.1, 3.2, 3.3, server='h1', status=200, response='time=123', exp_id='exp1')
         ]
 
         self.assertEqual(expected, actual)

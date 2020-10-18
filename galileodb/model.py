@@ -83,23 +83,14 @@ class QueuedExperiment(NamedTuple):
     configuration: ExperimentConfiguration
 
 
-class ServiceRequestTrace(NamedTuple):
+class RequestTrace(NamedTuple):
+    request_id: str
     client: str
     service: str
-    host: str
     created: float
     sent: float
     done: float
+    status: int = -1
+    server: str = None
     exp_id: str = None
-
-    @property
-    def rt_time(self):
-        return (self.done - self.created) * 1000
-
-    @property
-    def queue_time(self):
-        return (self.sent - self.created) * 1000
-
-    @property
-    def processing_time(self):
-        return (self.done - self.sent) * 1000
+    response: str = None  # should be the last field for easier line-based transmission
