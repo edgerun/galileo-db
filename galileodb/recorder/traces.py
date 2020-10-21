@@ -73,6 +73,10 @@ class RedisTraceRecorder(TraceRecorder):
         self.writer.write(self.buffer)
         self.buffer.clear()
 
+    def stop(self, timeout=None):
+        super().stop(timeout)
+        self._flush()
+
 
 class TracesSubscriber:
     def __init__(self, rds, channel=None) -> None:

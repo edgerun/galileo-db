@@ -65,13 +65,14 @@ def run(args):
         logger.debug('interrupt received')
         pass
     finally:
-        exp_db.finalize_experiment(exp, 'FINISHED')
         logger.info('shutting down experiment recorder')
         if recorder:
             try:
                 recorder.stop(5)
             except:
                 pass
+
+        exp_db.finalize_experiment(exp, 'FINISHED')
 
         exp_db.close()
 
