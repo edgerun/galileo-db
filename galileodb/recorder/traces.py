@@ -46,8 +46,9 @@ class TraceRecorder(threading.Thread, ABC):
 
 class RedisTraceRecorder(TraceRecorder):
 
-    def __init__(self, rds, writer: TraceWriter, flush_every=36) -> None:
+    def __init__(self, rds, exp_id: str, writer: TraceWriter, flush_every=36) -> None:
         super().__init__(rds)
+        self.exp_id = exp_id
         self.writer = writer
         self.buffer = list()
 
@@ -56,13 +57,14 @@ class RedisTraceRecorder(TraceRecorder):
 
     def run(self):
         try:
-            logger.debug('starting RedisTraceRecorder')
+            logger.debug('starting RedisTraceRecorder for experiment %s', self.exp_id)
             super().run()
         finally:
-            logger.debug('closing RedisTraceRecorder')
+            logger.debug('closing RedisTraceRecorder for experiment %s', self.exp_id)
             self._flush()
 
     def _record(self, t: RequestTrace):
+        t = t._replace(exp_id=self.exp_id)
         self.buffer.append(t)
 
         self.i = (self.i + 1) % self.flush_every
