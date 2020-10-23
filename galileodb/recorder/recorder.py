@@ -13,7 +13,7 @@ class Recorder:
 
         self.telemetry_recorder = ExperimentTelemetryRecorder(rds, exp_db, experiment_id)
         self.event_recorder = ExperimentEventRecorderThread(ExperimentEventRecorder(rds, exp_db, experiment_id))
-        self.trace_recorder = RedisTraceRecorder(rds, DatabaseTraceWriter(exp_db))
+        self.trace_recorder = RedisTraceRecorder(rds, experiment_id, DatabaseTraceWriter(exp_db))
 
     def start(self):
         self.telemetry_recorder.start()
