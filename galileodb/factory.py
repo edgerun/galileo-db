@@ -13,6 +13,9 @@ def create_experiment_database_from_env(env: MutableMapping = os.environ) -> Exp
 
 
 def create_experiment_database(driver: str, env: MutableMapping = os.environ) -> ExperimentDatabase:
+    if driver == 'influxdb':
+        return create_influxdb_from_env(env)
+
     from galileodb.sql.adapter import ExperimentSQLDatabase
 
     if driver == 'sqlite':
@@ -25,6 +28,20 @@ def create_experiment_database(driver: str, env: MutableMapping = os.environ) ->
         raise ValueError('unknown database driver %s' % driver)
 
     return ExperimentSQLDatabase(db_adapter)
+
+
+def create_influxdb_from_env(env: MutableMapping = os.environ):
+    from galileodb.influx.db import InfluxExperimentDatabase
+    from influxdb_client import InfluxDBClient
+
+    params = {
+        'url': env.get('galileo_expdb_influxdb_url', 'http://localhost:8086'),
+        'token': env.get('galileo_expdb_influxdb_token', 'my-token'),
+        'timeout': int(env.get('galileo_expdb_influxdb_timeout', '10000')),
+        'org': env.get('galileo_expdb_influxdb_org', 'galileo'),
+    }
+
+    return InfluxExperimentDatabase(InfluxDBClient(**params), org_name=params['org'])
 
 
 def create_mysql_from_env(env: MutableMapping = os.environ):
