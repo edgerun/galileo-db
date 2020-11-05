@@ -40,7 +40,8 @@ setuptools.setup(
     ],
     entry_points={
         "console_scripts": [
-            'galileo-experiment-recorder = galileodb.cli.recorder:main'
+            'galileodb-recorder = galileodb.cli.recorder:main',
+            'galileodb-ctl = galileodb.cli.manager:main'
         ]
     },
 )
