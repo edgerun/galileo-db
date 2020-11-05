@@ -1,6 +1,7 @@
 import csv
 import logging
 import os
+from abc import ABC
 from multiprocessing import Process
 from multiprocessing.queues import Queue
 from queue import Empty
@@ -19,7 +20,7 @@ PAUSE = "__PAUSE__"
 FLUSH = '__FLUSH__'
 
 
-class TraceWriter:
+class TraceWriter(ABC):
     def write(self, traces: List[RequestTrace]):
         raise NotImplementedError
 
@@ -57,7 +58,7 @@ class TraceLogger(Process):
                 else:
                     logger.error('error writing traces: %s', e)
         else:
-            logger.warning('empty writer')
+            logger.debug('no writer to flush to')
 
         self.buffer.clear()
 
