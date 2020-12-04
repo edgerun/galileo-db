@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS telemetry
     EXP_ID    VARCHAR(100) NOT NULL,
     TIMESTAMP DOUBLE       NOT NULL,
     METRIC    varchar(100) NOT NULL,
-    NODE      varchar(50) NOT NULL,
+    SUBSYSTEM varchar(100),
+    NODE      varchar(50)  NOT NULL,
     VALUE     DOUBLE       NOT NULL
 );
 

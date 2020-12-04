@@ -42,6 +42,7 @@ class Telemetry(NamedTuple):
     node: str
     value: float
     exp_id: str
+    subsystem: str = None
 
 
 class NodeInfo(NamedTuple):

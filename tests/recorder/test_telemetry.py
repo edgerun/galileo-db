@@ -35,11 +35,13 @@ class TestExperimentTelemetryRecorder(unittest.TestCase):
 
         recorder._record(Telemetry('1.0', '31', 'node1', 'cpu'))
         recorder._record(Telemetry('2.0', '32', 'node2', 'cpu'))
+        recorder._record(Telemetry('3.0', '33', 'node2', 'rx', 'eth0'))
 
         records = self.db_resource.sql.fetchall('SELECT * FROM `telemetry` WHERE EXP_ID = "unittest"')
-        self.assertEqual(2, len(records))
-        self.assertEqual(('unittest', 1.0, 'cpu', 'node1', 31.0), records[0])
-        self.assertEqual(('unittest', 2.0, 'cpu', 'node2', 32.0), records[1])
+        self.assertEqual(3, len(records))
+        self.assertEqual(('unittest', 1.0, 'cpu', None, 'node1', 31.0), records[0])
+        self.assertEqual(('unittest', 2.0, 'cpu', None, 'node2', 32.0), records[1])
+        self.assertEqual(('unittest', 3.0, 'rx', 'eth0', 'node2', 33.0), records[2])
 
     @timeout_decorator.timeout(5)
     def test_publish_non_float_value_does_not_break_recorder(self):
@@ -57,8 +59,8 @@ class TestExperimentTelemetryRecorder(unittest.TestCase):
 
         records = self.db_resource.sql.fetchall('SELECT * FROM `telemetry` WHERE EXP_ID = "unittest"')
         self.assertEqual(2, len(records))
-        self.assertEqual(('unittest', 5.0, 'cpu', 'node1', 35.0), records[0])
-        self.assertEqual(('unittest', 7.0, 'cpu', 'node2', 37.0), records[1])
+        self.assertEqual(('unittest', 5.0, 'cpu', None, 'node1', 35.0), records[0])
+        self.assertEqual(('unittest', 7.0, 'cpu', None, 'node2', 37.0), records[1])
 
 
 if __name__ == '__main__':

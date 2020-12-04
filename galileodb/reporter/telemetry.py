@@ -10,6 +10,10 @@ class RedisTelemetryReporter:
 
     def report(self, telemetry: Telemetry):
         channel = f'telem/{telemetry.node}/{telemetry.metric}'
+
+        if telemetry.subsystem:
+            channel += '/' + telemetry.subsystem
+
         msg = f'{telemetry.timestamp} {telemetry.value}'
 
         self.rds.publish(channel, msg)

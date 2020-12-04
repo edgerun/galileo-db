@@ -47,11 +47,7 @@ class ExperimentTelemetryRecorder(TelemetryRecorder):
                 logger.error('Could not convert value "%s" of metric "%s"', t.value, t.metric)
                 return
 
-        metric = t.metric
-        if t.subsystem:
-            metric += '/' + t.subsystem
-
-        self.buffer.append(GalileoTelemetry(float(t.timestamp), t.metric, t.node, val, self.exp_id))
+        self.buffer.append(GalileoTelemetry(float(t.timestamp), t.metric, t.node, val, self.exp_id, t.subsystem))
 
         self.i = (self.i + 1) % self.flush_every
         if self.i == 0:
