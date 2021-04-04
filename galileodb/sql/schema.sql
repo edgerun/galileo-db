@@ -47,6 +47,5 @@ CREATE TABLE IF NOT EXISTS traces
     STATUS      INT,
     RESPONSE    TEXT,
     SERVER      VARCHAR (50),
-    EXP_ID      VARCHAR (100),
-    CONSTRAINT traces_pk PRIMARY KEY (REQUEST_ID)
+    EXP_ID      VARCHAR (100)
 );
