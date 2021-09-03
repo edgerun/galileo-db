@@ -2,7 +2,7 @@ import time
 import unittest
 
 from galileodb.factory import create_influxdb_from_env
-from galileodb.model import ExperimentEvent, RequestTrace
+from galileodb.model import ExperimentEvent, RequestTrace, Telemetry
 
 
 class TestInfluxExperimentDatabase(unittest.TestCase):
@@ -49,3 +49,18 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
         traces = exp_db.get_traces(exp_id)
 
         self.assertEquals(original_traces, traces, 'traces are not equal')
+
+    def test_save_telemetry(self):
+        exp_id = self.exp_id
+        exp_db = self.exp_db
+
+        time_time = time.time()
+        original_telemetry = [
+            Telemetry(timestamp=time_time, metric='cpu', node='node-0', value=0.5, exp_id=exp_id)
+        ]
+
+        exp_db.save_telemetry(original_telemetry)
+
+        telemetry = exp_db.get_telemetry(exp_id)
+
+        self.assertEquals(original_telemetry, telemetry, 'telemetry are not equal')

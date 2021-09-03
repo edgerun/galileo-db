@@ -101,10 +101,48 @@ class InfluxExperimentDatabase(ExperimentDatabase):
     # https://github.com/influxdata/influxdb-client-python/blob/eadbf6ac014582127e2df54698682e2924973e19/examples/nanosecond_precision.py#L37
 
     def save_telemetry(self, telemetry: List[Telemetry]):
-        pass
+        if len(telemetry) == 0:
+            return
+
+        points: List[Point] = list()
+        for data in telemetry:
+            p = Point("telemetry") \
+                .time(int(data.timestamp)) \
+                .tag('ts', data.timestamp) \
+                .field('value', data.value) \
+                .tag('exp_id', data.exp_id) \
+                .tag('node', data.node) \
+                .tag('metric', data.metric)
+            points.append(p)
+
+        self.writer.write(bucket=telemetry[0].exp_id, org=self.org_name, record=points)
 
     def get_telemetry(self, exp_id=None) -> List[Telemetry]:
-        pass
+        records = self.query.query_stream(
+            f'''
+            from(bucket:"{exp_id}")
+              |> range(start: 1970-01-01)
+              |> filter(fn: (r) =>
+                  r._measurement == "telemetry"
+              )
+            ''', org=self.org_name
+        )
+        events = list()
+
+        for record in records:
+            events.append(self._map_flux_record_to_telemetry(record))
+
+        return events
+
+    @staticmethod
+    def _map_flux_record_to_telemetry(record: FluxRecord):
+        return Telemetry(
+            timestamp=float(record.values['ts']),
+            metric=record.values['metric'],
+            node=record.values['node'],
+            value=record.get_value(),
+            exp_id=record.values['exp_id']
+        )
 
     def save_event(self, event: ExperimentEvent):
         return self.save_events([event])
