@@ -2,6 +2,7 @@ from typing import List
 
 from influxdb_client import InfluxDBClient, Point, WriteOptions, WriteApi, QueryApi
 from influxdb_client.client.delete_api import DeleteApi
+from influxdb_client.client.flux_table import FluxRecord
 from influxdb_client.client.write_api import WriteType
 
 from galileodb import ExperimentDatabase, Experiment, NodeInfo, Telemetry
@@ -19,8 +20,6 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         self.client = client
         self.org_name = org_name
         self.write_options = WriteOptions(write_type=WriteType.synchronous)
-
-        self.bucket = 'galileo'
 
     def open(self):
         self.writer = self.client.write_api(self.write_options)
@@ -43,13 +42,63 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         pass
 
     def save_traces(self, traces: List[RequestTrace]):
-        pass
+        if len(traces) == 0:
+            return
+
+        points: List[Point] = list()
+        for trace in traces:
+            p = Point("trace") \
+                .time(int(trace.created)) \
+                .field("request_id", trace.request_id) \
+                .tag("client", trace.client) \
+                .tag("service", trace.service) \
+                .tag("created", trace.created) \
+                .tag("sent", trace.sent) \
+                .tag("done", trace.done) \
+                .tag("status", trace.status) \
+                .tag("server", trace.server) \
+                .tag("exp_id", trace.exp_id) \
+                .tag("response", trace.response)
+            points.append(p)
+
+        self.writer.write(bucket=traces[0].exp_id, org=self.org_name, record=points)
 
     def touch_traces(self, experiment: Experiment):
         pass
 
-    def get_traces(self, exp_id: str = None) -> List[RequestTrace]:
-        pass
+    @staticmethod
+    def _map_flux_record_to_request_trace(record: FluxRecord) -> RequestTrace:
+        return RequestTrace(
+            request_id=record.get_value(),
+            client=record.values['client'],
+            service=record.values['service'],
+            done=float(record.values['done']),
+            created=float(record.values['created']),
+            sent=float(record.values['sent']),
+            status=int(record.values['status']),
+            server=record.values['server'],
+            exp_id=record.values['exp_id'],
+            response=record.values['response']
+        )
+
+    def get_traces(self, exp_id: str) -> List[RequestTrace]:
+        records = self.query.query_stream(
+            f'''
+            from(bucket:"{exp_id}")
+              |> range(start: 1970-01-01)
+              |> filter(fn: (r) =>
+                  r._measurement == "trace"
+              )
+            ''', org=self.org_name
+        )
+        events = list()
+
+        for record in records:
+            events.append(self._map_flux_record_to_request_trace(record))
+
+        return events
+
+    # https://github.com/influxdata/influxdb-client-python/blob/eadbf6ac014582127e2df54698682e2924973e19/examples/nanosecond_precision.py#L37
 
     def save_telemetry(self, telemetry: List[Telemetry]):
         pass
@@ -61,6 +110,9 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         return self.save_events([event])
 
     def save_events(self, events: List[ExperimentEvent]):
+        if len(events) == 0:
+            return
+
         points: List[Point] = list()
 
         for event in events:
@@ -71,18 +123,20 @@ class InfluxExperimentDatabase(ExperimentDatabase):
                 .tag("exp_id", event.exp_id)
             points.append(p)
 
-        self.writer.write(bucket=self.bucket, org=self.org_name, record=points)
+        self.writer.write(bucket=events[0].exp_id, org=self.org_name, record=points)
 
-    def get_events(self, exp_id=None) -> List[ExperimentEvent]:
+    def get_events(self, exp_id) -> List[ExperimentEvent]:
         tables = self.query.query(
-            '''
-            from(bucket:"galileo")
+            f'''
+            from(bucket:"{exp_id}")
               |> range(start: 1970-01-01)
               |> filter(fn: (r) =>
                   r._measurement == "event"
               )
             '''
         )
+        if len(tables) == 0:
+            return []
 
         records = tables[0].records
         events = list()
