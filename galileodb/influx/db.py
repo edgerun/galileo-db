@@ -30,16 +30,16 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         self.client.close()
 
     def save_experiment(self, experiment: Experiment):
-        pass
+        raise NotImplementedError()
 
     def update_experiment(self, experiment: Experiment):
-        pass
+        raise NotImplementedError()
 
     def delete_experiment(self, exp_id: str):
-        pass
+        raise NotImplementedError()
 
     def get_experiment(self, exp_id: str) -> Experiment:
-        pass
+        raise NotImplementedError()
 
     def save_traces(self, traces: List[RequestTrace]):
         if len(traces) == 0:
@@ -64,7 +64,7 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         self.writer.write(bucket=traces[0].exp_id, org=self.org_name, record=points)
 
     def touch_traces(self, experiment: Experiment):
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def _map_flux_record_to_request_trace(record: FluxRecord) -> RequestTrace:
@@ -156,12 +156,22 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         for event in events:
             p = Point("event") \
                 .time(int(event.timestamp)) \
-                .field("name", event.name) \
+                .tag("ts", event.timestamp) \
+                .tag("name", event.name) \
                 .field("value", event.value) \
                 .tag("exp_id", event.exp_id)
             points.append(p)
 
         self.writer.write(bucket=events[0].exp_id, org=self.org_name, record=points)
+
+    @staticmethod
+    def _map_flux_record_to_exp_event(record: FluxRecord) -> ExperimentEvent:
+        return ExperimentEvent(
+            exp_id=record.values['exp_id'],
+            timestamp=record.values['ts'],
+            name=record.values['name'],
+            value=record.get_value()
+        )
 
     def get_events(self, exp_id) -> List[ExperimentEvent]:
         tables = self.query.query(
@@ -180,15 +190,15 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         events = list()
 
         for record in records:
-            print(record)
+            events.append(InfluxExperimentDatabase._map_flux_record_to_exp_event(record))
 
         return events
 
     def save_nodeinfos(self, infos: List[NodeInfo]):
-        pass
+        raise NotImplementedError()
 
     def find_all(self) -> List[Experiment]:
-        pass
+        raise NotImplementedError()
 
     def get_running_experiment(self) -> Experiment:
-        pass
+        raise NotImplementedError()
