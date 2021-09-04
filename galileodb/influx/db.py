@@ -15,7 +15,7 @@ class InfluxExperimentDatabase(ExperimentDatabase):
     query: QueryApi
     delete: DeleteApi
 
-    def __init__(self, client: InfluxDBClient, org_name: str = 'galieo') -> None:
+    def __init__(self, client: InfluxDBClient, org_name: str = 'galileo') -> None:
         super().__init__()
         self.client = client
         self.org_name = org_name
