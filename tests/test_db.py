@@ -83,6 +83,7 @@ class AbstractTestExperimentDatabase(abc.ABC):
             Telemetry(1, 'cpu', 'n1', 32, 'expid1'),
             Telemetry(2, 'cpu', 'n1', 33, 'expid1'),
             Telemetry(3, 'cpu', 'n1', 31, 'expid2'),
+            Telemetry(4, 'rx', 'n1', 32, 'expid2', 'eth0'),
         ]
 
         self.db.save_telemetry(telemetry)
@@ -93,14 +94,16 @@ class AbstractTestExperimentDatabase(abc.ABC):
         self.assertEqual(telemetry[1], actual[1])
 
         actual = self.db.get_telemetry('expid2')
-        self.assertEqual(1, len(actual))
+        self.assertEqual(2, len(actual))
         self.assertEqual(telemetry[2], actual[0])
+        self.assertEqual(telemetry[3], actual[1])
 
         actual = self.db.get_telemetry()
-        self.assertEqual(3, len(actual))
+        self.assertEqual(4, len(actual))
         self.assertEqual(telemetry[0], actual[0])
         self.assertEqual(telemetry[1], actual[1])
         self.assertEqual(telemetry[2], actual[2])
+        self.assertEqual(telemetry[3], actual[3])
 
     def test_save_and_touch_and_get_traces(self):
         traces = [

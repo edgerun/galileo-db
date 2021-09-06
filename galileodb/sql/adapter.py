@@ -20,17 +20,20 @@ class SqlAdapter(abc.ABC):
         self._thread_local.connection = None
         self.connect_args = args
         self.connect_kwargs = kwargs
+        self._lock = threading.RLock()
 
     @property
     def connection(self):
-        if 'connection' not in self._thread_local.__dict__ or self._thread_local.connection is None:
-            logger.info('%s connecting to database', threading.current_thread().name)
-            self._thread_local.connection = self._connect(*self.connect_args, **self.connect_kwargs)
-        return self._thread_local.connection
+        with self._lock:
+            if 'connection' not in self._thread_local.__dict__ or self._thread_local.connection is None:
+                logger.info('%s connecting to database', threading.current_thread().name)
+                self._thread_local.connection = self._connect(*self.connect_args, **self.connect_kwargs)
+            return self._thread_local.connection
 
     def reconnect(self):
-        self.close()
-        self.open()
+        with self._lock:
+            self.close()
+            self.open()
 
     @property
     def db(self):
@@ -89,14 +92,16 @@ class SqlAdapter(abc.ABC):
             cur.close()
 
     def open(self):
-        assert self.connection is not None
+        with self._lock:
+            assert self.connection is not None
 
     def close(self):
-        if 'connection' in self._thread_local.__dict__ and self._thread_local.connection is not None:
-            try:
-                self._thread_local.connection.close()
-            finally:
-                self._thread_local.connection = None
+        with self._lock:
+            if 'connection' in self._thread_local.__dict__ and self._thread_local.connection is not None:
+                try:
+                    self._thread_local.connection.close()
+                finally:
+                    self._thread_local.connection = None
 
     def insert_one(self, table: str, data: Dict[str, object]):
         columns = self.sql_field_list(data.keys())
