@@ -21,6 +21,7 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
         self.exp_db.open()
         self.exp_db.client.buckets_api().delete_bucket(self.exp_bucket.id)
 
+    @unittest.skip("needs environment variables set - test manually")
     def test_open(self):
         exp_id = self.exp_id
 
@@ -38,6 +39,7 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
 
         exp_db.close()
 
+    @unittest.skip("needs environment variables set - test manually")
     def test_save_traces(self):
         exp_id = self.exp_id
         exp_db = self.exp_db
@@ -52,6 +54,7 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
 
         self.assertEquals(original_traces, traces, 'traces are not equal')
 
+    @unittest.skip("needs environment variables set - test manually")
     def test_save_telemetry(self):
         exp_id = self.exp_id
         exp_db = self.exp_db
