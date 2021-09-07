@@ -1,4 +1,3 @@
-import os
 import time
 import unittest
 
@@ -13,8 +12,7 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
         self.exp_db.open()
         self.exp_id = 'exp-1'
         self.exp_bucket = self.exp_db.client.buckets_api().create_bucket(bucket_name=self.exp_id,
-                                                                         org_id=os.environ.get(
-                                                                             'galileo_expdb_influxdb_org_id', 'org-id'))
+                                                                         org_id=self.exp_db.org_id)
 
     def tearDown(self) -> None:
         self.exp_db = create_influxdb_from_env()

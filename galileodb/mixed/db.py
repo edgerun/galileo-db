@@ -28,6 +28,10 @@ class MixedExperimentDatabase(ExperimentDatabase):
 
     def save_experiment(self, experiment: Experiment):
         self.sqldb.save_experiment(experiment)
+        self.influxdb.client.buckets_api().create_bucket(
+            bucket_name=experiment.id,
+            org_id=self.influxdb.org_id
+        )
 
     def update_experiment(self, experiment: Experiment):
         self.sqldb.update_experiment(experiment)

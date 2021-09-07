@@ -44,9 +44,10 @@ def create_influxdb_from_env(env: MutableMapping = os.environ):
         'token': env.get('galileo_expdb_influxdb_token', 'my-token'),
         'timeout': int(env.get('galileo_expdb_influxdb_timeout', '10000')),
         'org': env.get('galileo_expdb_influxdb_org', 'galileo'),
+        'org_id': env.get('galileo_expdb_influxdb_org_id', 'org-id')
     }
 
-    return InfluxExperimentDatabase(InfluxDBClient(**params), org_name=params['org'])
+    return InfluxExperimentDatabase(InfluxDBClient(**params), org_name=params['org'], org_id=params['org_id'])
 
 
 def create_mysql_from_env(env: MutableMapping = os.environ):

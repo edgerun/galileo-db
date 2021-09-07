@@ -15,10 +15,11 @@ class InfluxExperimentDatabase(ExperimentDatabase):
     query: QueryApi
     delete: DeleteApi
 
-    def __init__(self, client: InfluxDBClient, org_name: str = 'galileo') -> None:
+    def __init__(self, client: InfluxDBClient, org_name: str = 'galileo', org_id='org-id') -> None:
         super().__init__()
         self.client = client
         self.org_name = org_name
+        self.org_id = org_id
         self.write_options = WriteOptions(write_type=WriteType.synchronous)
 
     def open(self):
