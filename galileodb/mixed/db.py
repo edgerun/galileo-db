@@ -42,7 +42,7 @@ class MixedExperimentDatabase(ExperimentDatabase):
         self.influxdb.save_traces(traces)
 
     def touch_traces(self, experiment: Experiment):
-        raise NotImplementedError()
+        self.sqldb.touch_traces(experiment)
 
     def get_traces(self, exp_id: str) -> List[RequestTrace]:
         return self.influxdb.get_traces(exp_id)
