@@ -19,50 +19,68 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
         self.exp_db.open()
         self.exp_db.client.buckets_api().delete_bucket(self.exp_bucket.id)
 
-    @unittest.skip("needs environment variables set - test manually")
-    def test_open(self):
+    # @unittest.skip("needs environment variables set - test manually")
+    def test_save_event(self):
         exp_id = self.exp_id
 
         exp_db = self.exp_db
 
-        print(exp_db.get_events(exp_id))
+        # print(exp_db.get_events(exp_id))
 
-        exp_db.save_events([
-            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
-            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
-            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
-            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
-            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
-        ])
+        events = [
+            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
+            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
+            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
+            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
+            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
+        ]
 
-        exp_db.close()
+        for event in events:
+            exp_db.save_events([event])
 
-    @unittest.skip("needs environment variables set - test manually")
+        retrieved_events = exp_db.get_events(exp_id)
+        self.assertEquals(events, retrieved_events)
+
+    # @unittest.skip("needs environment variables set - test manually")
     def test_save_traces(self):
         exp_id = self.exp_id
         exp_db = self.exp_db
 
         original_traces = [
             RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
+                         exp_id, 'response'),
+            RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
+                         exp_id, 'response'),
+            RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
+                         exp_id, 'response'),
+            RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
+                         exp_id, 'response'),
+            RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
                          exp_id, 'response')
         ]
-        exp_db.save_traces(original_traces)
+
+        for trace in original_traces:
+            exp_db.save_traces([trace])
 
         traces = exp_db.get_traces(exp_id)
-
+        print(traces)
         self.assertEquals(original_traces, traces, 'traces are not equal')
 
-    @unittest.skip("needs environment variables set - test manually")
+    # @unittest.skip("needs environment variables set - test manually")
     def test_save_telemetry(self):
         exp_id = self.exp_id
         exp_db = self.exp_db
 
-        time_time = time.time()
         original_telemetry = [
-            Telemetry(timestamp=time_time, metric='cpu', node='node-0', value=0.5, exp_id=exp_id)
+            Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=0, exp_id=exp_id),
+            Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=1, exp_id=exp_id),
+            Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=2, exp_id=exp_id),
+            Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=3, exp_id=exp_id),
+            Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=-1, exp_id=exp_id)
         ]
 
-        exp_db.save_telemetry(original_telemetry)
+        for tel in original_telemetry:
+            exp_db.save_telemetry([tel])
 
         telemetry = exp_db.get_telemetry(exp_id)
 
