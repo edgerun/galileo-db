@@ -27,13 +27,14 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
 
         # print(exp_db.get_events(exp_id))
 
-        exp_db.save_events([
+        events = [
             ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
             ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
             ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
             ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
             ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
-        ])
+        ]
+        exp_db.save_events(events)
 
         for event in events:
             exp_db.save_events([event])
@@ -66,7 +67,7 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
         print(traces)
         self.assertEquals(original_traces, traces, 'traces are not equal')
 
-    # @unittest.skip("needs environment variables set - test manually")
+    @unittest.skip("needs environment variables set - test manually")
     def test_save_telemetry(self):
         exp_id = self.exp_id
         exp_db = self.exp_db

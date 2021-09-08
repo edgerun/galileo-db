@@ -1,6 +1,7 @@
+import datetime
 from typing import List
 
-from influxdb_client import InfluxDBClient, Point, WriteOptions, WriteApi, QueryApi
+from influxdb_client import InfluxDBClient, Point, WriteOptions, WriteApi, QueryApi, WritePrecision
 from influxdb_client.client.delete_api import DeleteApi
 from influxdb_client.client.flux_table import FluxRecord
 from influxdb_client.client.write_api import WriteType
@@ -61,15 +62,7 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         )
 
     def get_traces(self, exp_id: str) -> List[RequestTrace]:
-        records = self.query.query_stream(
-            f'''
-            from(bucket:"{exp_id}")
-              |> range(start: 1970-01-01)
-              |> filter(fn: (r) =>
-                  r._measurement == "trace"
-              )
-            ''', org=self.org_name
-        )
+        records = self._query_for_measurement("trace", exp_id)
         events = list()
 
         for record in records:
@@ -80,15 +73,7 @@ class InfluxExperimentDatabase(ExperimentDatabase):
     # https://github.com/influxdata/influxdb-client-python/blob/eadbf6ac014582127e2df54698682e2924973e19/examples/nanosecond_precision.py#L37
 
     def get_telemetry(self, exp_id=None) -> List[Telemetry]:
-        records = self.query.query_stream(
-            f'''
-            from(bucket:"{exp_id}")
-              |> range(start: 1970-01-01)
-              |> filter(fn: (r) =>
-                  r._measurement == "telemetry"
-              )
-            ''', org=self.org_name
-        )
+        records = self._query_for_measurement("telemetry", exp_id)
         events = list()
 
         for record in records:
@@ -112,7 +97,9 @@ class InfluxExperimentDatabase(ExperimentDatabase):
 
         points: List[Point] = list()
         for data in telemetry:
+            strftime = datetime.datetime.utcfromtimestamp(data.timestamp)
             p = Point("telemetry") \
+                .time(strftime, WritePrecision.MS) \
                 .tag('ts', data.timestamp) \
                 .field('value', data.value) \
                 .tag('exp_id', data.exp_id) \
@@ -131,7 +118,9 @@ class InfluxExperimentDatabase(ExperimentDatabase):
 
         points: List[Point] = list()
         for trace in traces:
+            strftime = datetime.datetime.utcfromtimestamp(trace.sent)
             p = Point("trace") \
+                .time(strftime, WritePrecision.MS) \
                 .field("request_id", trace.request_id) \
                 .tag("client", trace.client) \
                 .tag("service", trace.service) \
@@ -153,7 +142,9 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         points: List[Point] = list()
 
         for event in events:
+            strftime = datetime.datetime.utcfromtimestamp(event.timestamp)
             p = Point("event") \
+                .time(strftime, WritePrecision.MS) \
                 .tag("ts", event.timestamp) \
                 .tag("name", event.name) \
                 .field("value", event.value) \
@@ -171,21 +162,26 @@ class InfluxExperimentDatabase(ExperimentDatabase):
             value=record.get_value()
         )
 
-    def get_events(self, exp_id) -> List[ExperimentEvent]:
+    def _query_for_measurement(self, measurement: str, exp_id: str):
+        stop = datetime.datetime.utcnow() + datetime.timedelta(days=1)
+        stop = stop.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         records = self.query.query_stream(
-            f'''
-            from(bucket:"{exp_id}")
-              |> range(start: 1970-01-01)
-              |> filter(fn: (r) =>
-                  r._measurement == "event"
-              )
+            f'''  
+               from(bucket: "{exp_id}")
+                 |> range(start: 1970-01-01, stop: {stop})
+                 |> filter(fn: (r) => r["_measurement"] == "{measurement}")    
             '''
         )
+        return records
+
+    def get_events(self, exp_id) -> List[ExperimentEvent]:
+        records = self._query_for_measurement("event", exp_id)
         events = []
         for record in records:
             events.append(InfluxExperimentDatabase._map_flux_record_to_exp_event(record))
 
         return events
+
 
     def save_nodeinfos(self, infos: List[NodeInfo]):
         raise NotImplementedError()
