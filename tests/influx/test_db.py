@@ -19,7 +19,7 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
         self.exp_db.open()
         self.exp_db.client.buckets_api().delete_bucket(self.exp_bucket.id)
 
-    # @unittest.skip("needs environment variables set - test manually")
+    @unittest.skip("needs environment variables set - test manually")
     def test_save_event(self):
         exp_id = self.exp_id
 
@@ -27,13 +27,13 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
 
         # print(exp_db.get_events(exp_id))
 
-        events = [
-            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
-            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
-            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
-            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
-            ExperimentEvent(exp_id, time.time(), 'some-event', '1'),
-        ]
+        exp_db.save_events([
+            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
+            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
+            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
+            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
+            ExperimentEvent(exp_id, time.time(), 'some-event', 'some-value'),
+        ])
 
         for event in events:
             exp_db.save_events([event])
@@ -41,7 +41,7 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
         retrieved_events = exp_db.get_events(exp_id)
         self.assertEquals(events, retrieved_events)
 
-    # @unittest.skip("needs environment variables set - test manually")
+    @unittest.skip("needs environment variables set - test manually")
     def test_save_traces(self):
         exp_id = self.exp_id
         exp_db = self.exp_db
