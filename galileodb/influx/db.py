@@ -62,7 +62,7 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         )
 
     def get_traces(self, exp_id: str) -> List[RequestTrace]:
-        records = self._query_for_measurement("trace", exp_id)
+        records = self._query_for_measurement("traces", exp_id)
         events = list()
 
         for record in records:
@@ -97,11 +97,11 @@ class InfluxExperimentDatabase(ExperimentDatabase):
 
         points: List[Point] = list()
         for data in telemetry:
-            strftime = datetime.datetime.utcfromtimestamp(data.timestamp)
+            strftime = datetime.datetime.utcfromtimestamp(float(data.timestamp))
             p = Point("telemetry") \
                 .time(strftime, WritePrecision.MS) \
-                .tag('ts', data.timestamp) \
-                .field('value', data.value) \
+                .tag('ts', float(data.timestamp)) \
+                .field('value', float(data.value)) \
                 .tag('exp_id', data.exp_id) \
                 .tag('node', data.node) \
                 .tag('metric', data.metric)
@@ -118,16 +118,16 @@ class InfluxExperimentDatabase(ExperimentDatabase):
 
         points: List[Point] = list()
         for trace in traces:
-            strftime = datetime.datetime.utcfromtimestamp(trace.sent)
-            p = Point("trace") \
+            strftime = datetime.datetime.utcfromtimestamp(float(trace.sent))
+            p = Point("traces") \
                 .time(strftime, WritePrecision.MS) \
                 .field("request_id", trace.request_id) \
                 .tag("client", trace.client) \
                 .tag("service", trace.service) \
-                .tag("created", trace.created) \
-                .tag("sent", trace.sent) \
-                .tag("done", trace.done) \
-                .tag("status", trace.status) \
+                .tag("created", float(trace.created)) \
+                .tag("sent", float(trace.sent)) \
+                .tag("done", float(trace.done)) \
+                .tag("status", int(trace.status)) \
                 .tag("server", trace.server) \
                 .tag("exp_id", trace.exp_id) \
                 .tag("response", trace.response)
@@ -142,10 +142,10 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         points: List[Point] = list()
 
         for event in events:
-            strftime = datetime.datetime.utcfromtimestamp(event.timestamp)
-            p = Point("event") \
+            strftime = datetime.datetime.utcfromtimestamp(float(event.timestamp))
+            p = Point("events") \
                 .time(strftime, WritePrecision.MS) \
-                .tag("ts", event.timestamp) \
+                .tag("ts", float(event.timestamp)) \
                 .tag("name", event.name) \
                 .field("value", event.value) \
                 .tag("exp_id", event.exp_id)
@@ -175,7 +175,7 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         return records
 
     def get_events(self, exp_id) -> List[ExperimentEvent]:
-        records = self._query_for_measurement("event", exp_id)
+        records = self._query_for_measurement("events", exp_id)
         events = []
         for record in records:
             events.append(InfluxExperimentDatabase._map_flux_record_to_exp_event(record))
