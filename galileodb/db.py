@@ -36,7 +36,7 @@ class ExperimentDatabase(ABC):
     def touch_traces(self, experiment: Experiment):
         raise NotImplementedError
 
-    def get_traces(self, exp_id: str = None) -> List[RequestTrace]:
+    def get_traces(self, exp_id: str) -> List[RequestTrace]:
         raise NotImplementedError
 
     def save_telemetry(self, telemetry: List[Telemetry]):
@@ -51,7 +51,7 @@ class ExperimentDatabase(ABC):
     def save_events(self, events: List[ExperimentEvent]):
         raise NotImplementedError
 
-    def get_events(self, exp_id=None) -> List[ExperimentEvent]:
+    def get_events(self, exp_id) -> List[ExperimentEvent]:
         raise NotImplementedError
 
     def save_nodeinfos(self, infos: List[NodeInfo]):
