@@ -28,9 +28,10 @@ class TraceRecorderTest(unittest.TestCase):
         recorder = TestTraceRecorder(self.redis.rds)
         recorder.start()
 
+        headers = '{"server": ["Server", "BaseHTTP/0.6 Python/3.9.5"], "date": ["Date", "Tue, 14 Sep 2021 08:54:40 GMT"], "content-type": ["Content-type", "text/html"]}'
         reporter = RedisTraceReporter(self.redis.rds)
         fixture = [
-            RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, response='hello there'),
+            RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, response='hello there', headers=headers),
             RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, server='s1', exp_id='exp1')
         ]
         reporter.report_multiple(fixture)
@@ -57,8 +58,17 @@ class TraceSubscriberTest(unittest.TestCase):
         parse = TracesSubscriber.parse
 
         expected = RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, response="foo=bar\nfield1=value1,a,b,c")
-        actual = parse(r"r1,c1,s1,1.1000000,1.2000000,1.3000000,200,None,None,foo=bar\nfield1=value1,a,b,c")
+        actual = parse(r"r1,c1,s1,1.1000000,1.2000000,1.3000000,200,None,None,None,foo=bar\nfield1=value1,a,b,c")
 
+        self.assertEqual(expected, actual)
+
+    def test_parse_with_headers(self):
+        parse = TracesSubscriber.parse
+        headers = '{"server": ["Server", "BaseHTTP/0.6 Python/3.9.5"], "date": ["Date", "Tue, 14 Sep 2021 08:54:40 GMT"], "content-type": ["Content-type", "text/html"]}'
+        expected = RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, response='foo=bar\nfield1=value1,a,b,c',
+                                headers=headers)
+        actual = parse(
+            fr"r1,c1,s1,1.1000000,1.2000000,1.3000000,200,None,None,{headers.replace(',', '|')},foo=bar\nfield1=value1,a,b,c")
         self.assertEqual(expected, actual)
 
 
@@ -71,7 +81,7 @@ class RedisTraceRecorderTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.redis.tearDown()
 
-    @unittest.skip("FIXME: sometimes fails")
+    # @unittest.skip("FIXME: sometimes fails")
     def test_recorder(self):
         queue = Queue()
 
@@ -84,14 +94,14 @@ class RedisTraceRecorderTest(unittest.TestCase):
         recorder.start()
 
         reporter = RedisTraceReporter(self.redis.rds)
-
+        headers = '\'\"{"server": ["Server", "BaseHTTP/0.6 Python/3.9.5"], "date": ["Date", "Tue, 14 Sep 2021 08:54:40 GMT"], "content-type": ["Content-type", "text/html"]}\"\''
         fixture = [
-            RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, response='hello there'),
+            RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, headers=headers, response='hello there'),
             RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, server='s1'),
         ]
 
         expected = [
-            RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, response='hello there', exp_id='exp1'),
+            RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, headers=headers, response='hello there', exp_id='exp1'),
             RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, server='s1', exp_id='exp1')
         ]
 

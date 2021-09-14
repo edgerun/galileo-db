@@ -15,7 +15,7 @@ from tests.testutils import RedisResource, SqliteResource, assert_poll, RedisSub
 
 traces = [
     RequestTrace('req1', 'client', 'service', 1.1, 1.2, 1.3),
-    RequestTrace('req2', 'client', 'service', 2.2, 2.3, 2.4, 200, 'server1', 'exp1', 'hello'),
+    RequestTrace('req2', 'client', 'service', 2.2, 2.3, 2.4, 200, 'server1', 'exp1','{"headers": 1}', 'hello'),
     RequestTrace('req3', 'client', 'service', 3.2, 3.3, 3.4, status=200, server='server1',
                  response='foo=bar\nx=1,"2",3')
 ]
@@ -144,11 +144,11 @@ class TestRedisTopicTraceWriter(unittest.TestCase):
         self.writer.write(traces)
 
         t1 = self.sub.queue.get(timeout=2)
-        self.assertEqual(t1, 'req1,client,service,1.1000000,1.2000000,1.3000000,-1,None,None,None')
+        self.assertEqual(t1, 'req1,client,service,1.1000000,1.2000000,1.3000000,-1,None,None,None,None')
         t2 = self.sub.queue.get(timeout=2)
-        self.assertEqual(t2, 'req2,client,service,2.2000000,2.3000000,2.4000000,200,server1,exp1,hello')
+        self.assertEqual(t2, 'req2,client,service,2.2000000,2.3000000,2.4000000,200,server1,exp1,{"headers": 1},hello')
         t3 = self.sub.queue.get(timeout=2)
-        self.assertEqual(t3, r'req3,client,service,3.2000000,3.3000000,3.4000000,200,server1,None,foo=bar\nx=1,"2",3')
+        self.assertEqual(t3, r'req3,client,service,3.2000000,3.3000000,3.4000000,200,server1,None,None,foo=bar\nx=1,"2",3')
 
 
 class TestFileTraceWriter(unittest.TestCase):
@@ -165,10 +165,10 @@ class TestFileTraceWriter(unittest.TestCase):
         self.writer.write(traces[1:])  # makes sure consecutive write calls append to file
 
         expected = \
-            'request_id,client,service,created,sent,done,status,server,exp_id,response\n' + \
-            'req1,client,service,1.1,1.2,1.3,-1,,,\n' + \
-            'req2,client,service,2.2,2.3,2.4,200,server1,exp1,hello\n' + \
-            'req3,client,service,3.2,3.3,3.4,200,server1,,"foo=bar\n' + \
+            'request_id,client,service,created,sent,done,status,server,exp_id,headers,response\n' + \
+            'req1,client,service,1.1,1.2,1.3,-1,,,,\n' + \
+            'req2,client,service,2.2,2.3,2.4,200,server1,exp1,"{""headers"": 1}",hello\n' + \
+            'req3,client,service,3.2,3.3,3.4,200,server1,,,"foo=bar\n' + \
             'x=1,""2"",3"'  # this is just how the csv writer resolves the double quotes ...
 
         with open(self.writer.file_path) as fd:

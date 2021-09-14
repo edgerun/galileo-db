@@ -5,7 +5,7 @@ from galileodb.model import RequestTrace
 
 class RedisTraceReporter:
     channel = 'galileo/results/traces'
-    line_format = '%s,%s,%s,%.7f,%.7f,%.7f,%d,%s,%s,%s'
+    line_format = '%s,%s,%s,%.7f,%.7f,%.7f,%d,%s,%s,%s,%s'
 
     def __init__(self, rds) -> None:
         super().__init__()
@@ -21,7 +21,11 @@ class RedisTraceReporter:
             response = t.response
             if response:
                 response = response.replace('\n', '\\n')
-
+            headers = t.headers
+            if headers is None:
+                headers = "None"
+            else:
+                headers = headers.replace(",", "|")
             value = fmt % (
                 t.request_id,
                 t.client,
@@ -32,7 +36,8 @@ class RedisTraceReporter:
                 t.status,
                 t.server,
                 t.exp_id,
-                response,
+                headers,
+                response
             )
             rds.publish(key, value)
 

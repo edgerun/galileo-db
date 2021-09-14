@@ -94,4 +94,5 @@ class RequestTrace(NamedTuple):
     status: int = -1
     server: str = None
     exp_id: str = None
+    headers: str = None
     response: str = None  # should be the last field for easier line-based transmission

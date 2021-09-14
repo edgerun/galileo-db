@@ -49,15 +49,15 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
 
         original_traces = [
             RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
-                         exp_id, 'response'),
+                         exp_id, '{"headers": 1}', 'response'),
             RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
-                         exp_id, 'response'),
+                         exp_id, response='response'),
             RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
-                         exp_id, 'response'),
+                         exp_id, response='response'),
             RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
-                         exp_id, 'response'),
+                         exp_id, response='response'),
             RequestTrace('1', 'client-1', 'resnet', time.time(), time.time() + 0.01, time.time() + 0.1, 200, 'server-1',
-                         exp_id, 'response')
+                         exp_id, response='response')
         ]
 
         for trace in original_traces:

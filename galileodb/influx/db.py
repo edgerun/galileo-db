@@ -58,6 +58,7 @@ class InfluxExperimentDatabase(ExperimentDatabase):
             status=int(record.values['status']),
             server=record.values['server'],
             exp_id=record.values['exp_id'],
+            headers=record.values.get('headers', None),
             response=record.values['response']
         )
 
@@ -130,7 +131,8 @@ class InfluxExperimentDatabase(ExperimentDatabase):
                 .tag("status", int(trace.status)) \
                 .tag("server", trace.server) \
                 .tag("exp_id", trace.exp_id) \
-                .tag("response", trace.response)
+                .tag("response", trace.response) \
+                .tag("headers", trace.headers)
             points.append(p)
 
         self.writer.write(bucket=traces[0].exp_id, org=self.org_name, record=points)

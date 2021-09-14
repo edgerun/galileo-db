@@ -108,17 +108,16 @@ class TracesSubscriber:
     @staticmethod
     def parse(line: str) -> RequestTrace:
         # FIXME: this is turning into a bad line-based protocol ...
-        data = line.split(',', maxsplit=9)
+        data = line.split(',', maxsplit=10)
 
         for i in range(len(data)):
             if data[i] == 'None':
                 data[i] = None
 
-        response = data[9]
+        response = data[10]
 
         if response:
             response = response.replace('\\n', '\n')
-
         return RequestTrace(
             request_id=data[0],
             client=data[1],
@@ -129,5 +128,6 @@ class TracesSubscriber:
             status=int(data[6]),
             server=data[7],
             exp_id=data[8],
-            response=response,
+            headers=data[9].replace("|", ",") if data[9] is not None else None,
+            response=response
         )

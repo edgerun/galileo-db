@@ -60,6 +60,29 @@ class TestRedisTraceReporter(TestCase):
         ])
 
         data = subscriber.queue.get(1)
-        self.assertEqual(r"r1,c1,s1,1.1000000,1.2000000,1.3000000,200,None,None,foo=bar\nfield1=value1,a,b,c", data)
+        self.assertEqual(r"r1,c1,s1,1.1000000,1.2000000,1.3000000,200,None,None,None,foo=bar\nfield1=value1,a,b,c",
+                         data)
+
+        subscriber.shutdown()
+
+    @timeout_decorator.timeout(5)
+    def test_report_with_heaers(self):
+        reporter = RedisTraceReporter(self.redis.rds)
+        subscriber = RedisSubscriber(self.redis.rds, RedisTraceReporter.channel)
+
+        subscriber.start()
+
+        headers = '{"server": ["Server", "BaseHTTP/0.6 Python/3.9.5"], "date": ["Date", "Tue, 14 Sep 2021 08:54:40 GMT"], "content-type": ["Content-type", "text/html"]}'
+        expected = RequestTrace('r1', 'c1', 's1', 1.1, 1.2, 1.3, 200, response='foo=bar\nfield1=value1,a,b,c',
+                                headers=headers)
+
+        reporter.report_multiple([
+            expected,
+        ])
+
+        data = subscriber.queue.get(1)
+        self.assertEqual(
+            fr"r1,c1,s1,1.1000000,1.2000000,1.3000000,200,None,None,{headers.replace(',', '|')},foo=bar\nfield1=value1,a,b,c",
+            data)
 
         subscriber.shutdown()

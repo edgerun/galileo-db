@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS traces
     DONE        DOUBLE       NOT NULL,
     STATUS      INT,
     RESPONSE    TEXT,
+    HEADERS      TEXT,
     SERVER      VARCHAR (50),
     EXP_ID      VARCHAR (100)
 );
