@@ -89,7 +89,8 @@ class InfluxExperimentDatabase(ExperimentDatabase):
             metric=record.values['metric'],
             node=record.values['node'],
             value=record.get_value(),
-            exp_id=record.values['exp_id']
+            exp_id=record.values['exp_id'],
+            subsystem=record.values.get('subsystem')
         )
 
     def save_telemetry(self, telemetry: List[Telemetry]):
@@ -105,7 +106,8 @@ class InfluxExperimentDatabase(ExperimentDatabase):
                 .field('value', float(data.value)) \
                 .tag('exp_id', data.exp_id) \
                 .tag('node', data.node) \
-                .tag('metric', data.metric)
+                .tag('metric', data.metric) \
+                .tag('subsystem', data.subsystem)
             points.append(p)
 
         self.writer.write(bucket=telemetry[0].exp_id, org=self.org_name, record=points)

@@ -73,7 +73,7 @@ class TestInfluxExperimentDatabase(unittest.TestCase):
         exp_db = self.exp_db
 
         original_telemetry = [
-            Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=0, exp_id=exp_id),
+            Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=0, exp_id=exp_id, subsystem="core1"),
             Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=1, exp_id=exp_id),
             Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=2, exp_id=exp_id),
             Telemetry(timestamp=time.time(), metric='cpu', node='node-0', value=3, exp_id=exp_id),
