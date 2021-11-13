@@ -32,11 +32,12 @@ def create_experiment(args):
 
 def create_redis():
     host = os.getenv('galileo_redis_host', 'localhost')
+    password = os.getenv('galileo_redis_password', None)
     port = int(os.getenv('galileo_redis_port', 6379))
 
     logger.info('connecting to redis event bus on %s:%d', host, port)
 
-    return redis.Redis(host=host, port=port, decode_responses=True)
+    return redis.Redis(host=host, port=port, password=password, decode_responses=True)
 
 
 def run(args):
