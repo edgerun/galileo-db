@@ -1,5 +1,5 @@
 import datetime
-from typing import List
+from typing import List, Dict
 
 from influxdb_client import InfluxDBClient, Point, WriteOptions, WriteApi, QueryApi, WritePrecision
 from influxdb_client.client.delete_api import DeleteApi
@@ -11,6 +11,7 @@ from galileodb.model import ExperimentEvent, RequestTrace
 
 
 class InfluxExperimentDatabase(ExperimentDatabase):
+
     client: InfluxDBClient
     writer: WriteApi
     query: QueryApi
@@ -44,6 +45,12 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         raise NotImplementedError()
 
     def touch_traces(self, experiment: Experiment):
+        raise NotImplementedError()
+
+    def save_metadata(self, exp_id: str, data: Dict):
+        raise NotImplementedError()
+
+    def get_metadata(self, exp_id: str) -> Dict:
         raise NotImplementedError()
 
     @staticmethod

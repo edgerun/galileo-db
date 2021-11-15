@@ -1,4 +1,5 @@
 import abc
+import json
 import logging
 import os
 import threading
@@ -158,6 +159,7 @@ class SqlAdapter(abc.ABC):
 
 
 class ExperimentSQLDatabase(ExperimentDatabase):
+
     SCHEMA_FILE = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
     def __init__(self, db: SqlAdapter) -> None:
@@ -181,6 +183,28 @@ class ExperimentSQLDatabase(ExperimentDatabase):
         del data['id']
         logger.debug('saving experiment with data %s', data)
         self.db.insert_one('experiments', data)
+
+    def save_metadata(self, exp_id: str, data: Dict):
+        logger.debug(f"saving metadata for exp: {exp_id}")
+        data['exp_id'] = exp_id
+        to_save = {
+            'exp_id' : exp_id,
+            'data': json.dumps(data)
+        }
+        self.db.insert_one('metadata', to_save)
+
+    def get_metadata(self, exp_id: str) -> Dict:
+        logger.debug(f"get metadata for exp_id: {exp_id}")
+        sql = f'SELECT * FROM `metadata` WHERE EXP_ID={self.db.placeholder}'
+        entry = self.db.fetchone(sql, (exp_id,))
+
+        if entry:
+            row = tuple(entry)
+            data = row[1]
+            return json.loads(data)
+        else:
+            return None
+
 
     def update_experiment(self, experiment: Experiment):
         data = dict(experiment.__dict__)

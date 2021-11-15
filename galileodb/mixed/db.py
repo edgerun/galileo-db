@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 
 from galileodb import ExperimentDatabase, Experiment, NodeInfo, Telemetry
 from galileodb.influx.db import InfluxExperimentDatabase
@@ -11,6 +11,7 @@ class MixedExperimentDatabase(ExperimentDatabase):
     Implements the ExperimentDatabase using InfluxDB for telemetry, traces and events and
     SQL for experiment metadata
     """
+
     influxdb: InfluxExperimentDatabase
     sqldb: ExperimentSQLDatabase
 
@@ -41,6 +42,12 @@ class MixedExperimentDatabase(ExperimentDatabase):
 
     def get_experiment(self, exp_id: str) -> Experiment:
         return self.sqldb.get_experiment(exp_id)
+
+    def save_metadata(self, exp_id: str, data: Dict):
+        self.sqldb.save_metadata(exp_id, data)
+
+    def get_metadata(self, exp_id: str) -> Dict:
+        return self.sqldb.get_metadata(exp_id)
 
     def save_traces(self, traces: List[RequestTrace]):
         self.influxdb.save_traces(traces)

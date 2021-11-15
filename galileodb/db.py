@@ -1,6 +1,6 @@
 import time
 from abc import ABC
-from typing import List
+from typing import List, Dict
 
 from galileodb.model import Experiment, Telemetry, NodeInfo, ExperimentEvent, RequestTrace
 
@@ -23,6 +23,12 @@ class ExperimentDatabase(ABC):
         raise NotImplementedError
 
     def get_experiment(self, exp_id: str) -> Experiment:
+        raise NotImplementedError
+
+    def save_metadata(self, exp_id: str, data: Dict):
+        raise NotImplementedError
+
+    def get_metadata(self, exp_id: str) -> Dict:
         raise NotImplementedError
 
     def save_traces(self, traces: List[RequestTrace]):

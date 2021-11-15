@@ -82,3 +82,10 @@ class AbstractTestSqlDatabase(AbstractTestExperimentDatabase):
         self.assertIsNotNone(self.db.get_experiment(exp_id_control))
         telemetry_rows = self.db.db.fetchall('SELECT * FROM telemetry WHERE EXP_ID = "%s"' % exp_id_control)
         self.assertEqual(1, len(telemetry_rows))
+
+    def test_save_metadata_saves_and_gets_metadata(self):
+        exp_id = 'expid10'
+        data = {'service': 'app1', 'params': {'var': 1}}
+        self.db.save_metadata(exp_id, data)
+        metadata = self.db.get_metadata(exp_id)
+        self.assertEqual(data, metadata)
