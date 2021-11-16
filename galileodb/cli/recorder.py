@@ -40,6 +40,15 @@ def create_redis():
     return redis.Redis(host=host, port=port, password=password, decode_responses=True)
 
 
+def save_metadata(exp_id: str, args, exp_db):
+    if args.metadata:
+        metadata = args.metadata
+    else:
+        metadata = {}
+
+    exp_db.save_metadata(exp_id, metadata)
+
+
 def run(args):
     signal.signal(signal.SIGTERM, handle_sigterm)
 
@@ -53,6 +62,10 @@ def run(args):
     # create and save the experiment
     exp = create_experiment(args)
     exp_db.save_experiment(exp)
+
+    # save metadata
+    exp_id = exp.id
+    save_metadata(exp_id, args, exp_db)
 
     # main control loop
     recorder = Recorder(rds, exp_db, exp.id)
