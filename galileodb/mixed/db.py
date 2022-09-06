@@ -53,7 +53,8 @@ class MixedExperimentDatabase(ExperimentDatabase):
         self.influxdb.save_traces(traces)
 
     def touch_traces(self, experiment: Experiment):
-        self.sqldb.touch_traces(experiment)
+        # not necessary, as traces are stored in experiment InfluxDB bucket
+        pass
 
     def get_traces(self, exp_id: str) -> List[RequestTrace]:
         return self.influxdb.get_traces(exp_id)
