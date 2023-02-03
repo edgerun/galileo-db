@@ -39,6 +39,7 @@ class MixedExperimentDatabase(ExperimentDatabase):
 
     def delete_experiment(self, exp_id: str):
         self.sqldb.delete_experiment(exp_id)
+        self.influxdb.delete_experiment(exp_id)
 
     def get_experiment(self, exp_id: str) -> Experiment:
         return self.sqldb.get_experiment(exp_id)

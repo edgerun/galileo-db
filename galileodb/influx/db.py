@@ -1,7 +1,8 @@
 import datetime
+import logging
 from typing import List, Dict
 
-from influxdb_client import InfluxDBClient, Point, WriteOptions, WriteApi, QueryApi, WritePrecision
+from influxdb_client import InfluxDBClient, Point, WriteOptions, WriteApi, QueryApi, WritePrecision, BucketsApi
 from influxdb_client.client.delete_api import DeleteApi
 from influxdb_client.client.flux_table import FluxRecord
 from influxdb_client.client.write_api import WriteType
@@ -9,13 +10,15 @@ from influxdb_client.client.write_api import WriteType
 from galileodb import ExperimentDatabase, Experiment, NodeInfo, Telemetry
 from galileodb.model import ExperimentEvent, RequestTrace
 
+logger = logging.getLogger()
+
 
 class InfluxExperimentDatabase(ExperimentDatabase):
-
     client: InfluxDBClient
     writer: WriteApi
     query: QueryApi
     delete: DeleteApi
+    bucket: BucketsApi
 
     def __init__(self, client: InfluxDBClient, org_name: str = 'galileo', org_id='org-id') -> None:
         super().__init__()
@@ -27,6 +30,7 @@ class InfluxExperimentDatabase(ExperimentDatabase):
     def open(self):
         self.writer = self.client.write_api(self.write_options)
         self.query = self.client.query_api()
+        self.bucket = self.client.buckets_api()
         self.delete = self.client.delete_api()
 
     def close(self):
@@ -39,7 +43,11 @@ class InfluxExperimentDatabase(ExperimentDatabase):
         raise NotImplementedError()
 
     def delete_experiment(self, exp_id: str):
-        raise NotImplementedError()
+        exp_bucket = self.bucket.find_bucket_by_name(exp_id)
+        if exp_bucket is None:
+            logger.info(f'Did not find bucket for experiment with ID: {exp_id}')
+        else:
+            self.bucket.delete_bucket(exp_bucket)
 
     def get_experiment(self, exp_id: str) -> Experiment:
         raise NotImplementedError()
@@ -192,7 +200,6 @@ class InfluxExperimentDatabase(ExperimentDatabase):
             events.append(InfluxExperimentDatabase._map_flux_record_to_exp_event(record))
 
         return events
-
 
     def save_nodeinfos(self, infos: List[NodeInfo]):
         raise NotImplementedError()

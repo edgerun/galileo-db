@@ -218,10 +218,11 @@ class ExperimentSQLDatabase(ExperimentDatabase):
             raise ValueError('No such experiment %s' % exp_id)
 
         stmts = [
-            "DELETE FROM `telemetry` WHERE EXP_ID = " + self.db.placeholder,
-            "DELETE FROM `traces` WHERE EXP_ID = " + self.db.placeholder,
-            "DELETE FROM `events` WHERE EXP_ID = " + self.db.placeholder,
+            # "DELETE FROM `telemetry` WHERE EXP_ID = " + self.db.placeholder,
+            # "DELETE FROM `traces` WHERE EXP_ID = " + self.db.placeholder,
+            # "DELETE FROM `events` WHERE EXP_ID = " + self.db.placeholder,
             "DELETE FROM `experiments` WHERE EXP_ID = " + self.db.placeholder,
+            "DELETE FROM `metadata` WHERE EXP_ID = " + self.db.placeholder,
         ]
 
         for sql in stmts:
