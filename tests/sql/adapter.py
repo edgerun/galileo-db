@@ -1,3 +1,5 @@
+import unittest
+
 from galileodb.model import Experiment, Telemetry
 from galileodb.sql.adapter import ExperimentSQLDatabase, SqlAdapter
 from tests.test_db import AbstractTestExperimentDatabase
@@ -60,6 +62,7 @@ class AbstractTestSqlDatabase(AbstractTestExperimentDatabase):
         rows = self.db.db.fetchall('SELECT * FROM telemetry')
         self.assertEqual(3, len(rows))
 
+    @unittest.skip('Skip because SQL DB does not host telemetry anymore')
     def test_delete_experiment_removes_telemetry(self):
         exp_id = 'expid10'
         exp_id_control = 'expid11'
