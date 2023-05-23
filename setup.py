@@ -22,7 +22,7 @@ except FileNotFoundError:
 
 setuptools.setup(
     name="galileo-db",
-    version="0.10.5.dev3",
+    version="0.10.5.dev4",
     author="Thomas Rausch",
     author_email="t.rausch@dsg.tuwien.ac.at",
     description="Galileo DB: Gateway and client tools for the Galileo Experiment DB",
