@@ -28,6 +28,7 @@ The Galileo DB project allows the following parameters via environment variables
 | `galileo_expdb_influxdb_timeout` | `10000` | Time waiting for connection to InfluxDB |
 | `galileo_expdb_influxdb_org` | `galileo` | InfluxDB organization |
 | `galileo_expdb_influxdb_org_id` | `org-id` | InfluxDB organization |
+| `galileo_expdb_trace_logger_flush` | `20` | Flush interval of trace logger | 
 
 Run tests
 =========

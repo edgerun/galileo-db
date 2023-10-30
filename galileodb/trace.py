@@ -30,6 +30,7 @@ class TraceLogger(Process):
 
     def __init__(self, trace_queue: Queue, writer: TraceWriter = None, start=True) -> None:
         super().__init__()
+        self.flush_interval = int(os.getenv('galileo_expdb_trace_logger_flush', '20'))
         self.traces = trace_queue
         self.closed = False
         self.buffer = list()
