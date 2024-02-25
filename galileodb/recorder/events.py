@@ -2,6 +2,7 @@
 Clients can publish into the redis topic 'galileo/events' with values: '<timestamp> <name> [<value>]'.
 """
 import logging
+import os
 import threading
 from typing import Iterator
 
@@ -74,7 +75,7 @@ class BatchingExperimentEventRecorder:
         self.rds = rds
         self.db = db
         self.exp_id = exp_id
-        self.flush_every = flush_every
+        self.flush_every = int(os.getenv('galileo_expdb_event_logger_flush', flush_every))
 
         self._buffer = list()
         self._subscriber = None
